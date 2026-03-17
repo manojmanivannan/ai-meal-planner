@@ -12,6 +12,7 @@ export interface Ingredient {
   carbs: number;
   fats: number;
   image?: string;
+  icon?: string;
 }
 
 export interface RecipeIngredient {

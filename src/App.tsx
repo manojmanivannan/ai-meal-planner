@@ -97,6 +97,7 @@ export default function App() {
           onBack={() => setCurrentView('main')} 
           onSave={() => setCurrentView('main')}
           onDelete={handleDeleteRecipe}
+          onAddNewIngredient={handleNewIngredient}
         />
       </div>
     );

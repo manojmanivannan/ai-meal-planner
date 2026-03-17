@@ -12,6 +12,7 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     carbs: 9,
     fats: 15,
     image: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&q=80&w=400',
+    icon: '🥑'
   },
   {
     id: '2',
@@ -24,6 +25,7 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     carbs: 0,
     fats: 3.6,
     image: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&q=80&w=400',
+    icon: '🍗'
   },
   {
     id: '3',
@@ -36,6 +38,7 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     carbs: 9,
     fats: 0,
     image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&q=80&w=400',
+    icon: '🥛'
   },
   {
     id: '4',
@@ -48,6 +51,7 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     carbs: 0,
     fats: 14,
     image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=400',
+    icon: '🫒'
   },
 ];
 

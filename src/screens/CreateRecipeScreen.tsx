@@ -1,16 +1,25 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, Camera, Timer, Users, Star, PlusCircle, Trash2, CheckCircle, BarChart3 } from 'lucide-react';
-import { Recipe } from '../types';
+import { Recipe, Ingredient } from '../types';
+import { IngredientPicker } from '../components/IngredientPicker';
+import { INITIAL_INGREDIENTS } from '../constants';
 
 interface CreateRecipeScreenProps {
   recipe?: Recipe;
   onBack: () => void;
   onSave: (recipe: Partial<Recipe>) => void;
   onDelete?: (id: string) => void;
+  onAddNewIngredient?: () => void;
 }
 
-export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({ recipe, onBack, onSave, onDelete }) => {
+export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({ 
+  recipe, 
+  onBack, 
+  onSave, 
+  onDelete,
+  onAddNewIngredient 
+}) => {
   const [title, setTitle] = React.useState(recipe?.title || '');
   const [description, setDescription] = React.useState(recipe?.description || '');
   const [prepTime, setPrepTime] = React.useState(recipe?.prepTime || 30);
@@ -18,9 +27,14 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({ recipe, 
   const [difficulty, setDifficulty] = React.useState(recipe?.difficulty || 'Intermediate');
   const [ingredients, setIngredients] = React.useState(recipe?.ingredients || []);
   const [instructions, setInstructions] = React.useState(recipe?.instructions || ['']);
+  const [isPickerOpen, setIsPickerOpen] = React.useState(false);
 
-  const handleAddIngredient = () => {
-    setIngredients([...ingredients, { ingredientId: '1', quantity: 1, unit: 'pcs' }]);
+  const handleSelectIngredient = (ing: Ingredient) => {
+    setIngredients([...ingredients, { 
+      ingredientId: ing.id, 
+      quantity: 1, 
+      unit: ing.baseUnit 
+    }]);
   };
 
   const handleRemoveIngredient = (index: number) => {
@@ -141,36 +155,38 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({ recipe, 
             <span className="text-on-surface-variant text-sm font-semibold">{ingredients.length} Items</span>
           </div>
           <div className="space-y-3">
-            {ingredients.map((ing, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl">
-                <div className="flex-grow font-bold text-sm">Ingredient {i + 1}</div>
-                <input 
-                  type="number" 
-                  value={ing.quantity}
-                  onChange={(e) => {
-                    const newIngs = [...ingredients];
-                    newIngs[i].quantity = parseFloat(e.target.value);
-                    setIngredients(newIngs);
-                  }}
-                  className="w-16 bg-surface-lowest border-none rounded-lg px-2 py-1 text-center font-bold"
-                />
-                <input 
-                  type="text" 
-                  value={ing.unit}
-                  onChange={(e) => {
-                    const newIngs = [...ingredients];
-                    newIngs[i].unit = e.target.value;
-                    setIngredients(newIngs);
-                  }}
-                  className="w-16 bg-surface-lowest border-none rounded-lg px-2 py-1 text-center text-xs font-bold"
-                />
-                <button onClick={() => handleRemoveIngredient(i)} className="p-2 text-error hover:bg-error/10 rounded-full transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+            {ingredients.map((ing, i) => {
+              const ingredientDetails = INITIAL_INGREDIENTS.find(item => item.id === ing.ingredientId);
+              return (
+                <div key={i} className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl">
+                  <div className="w-8 h-8 rounded-full bg-surface-lowest flex items-center justify-center text-lg">
+                    {ingredientDetails?.icon || '🥗'}
+                  </div>
+                  <div className="flex-grow">
+                    <p className="font-bold text-sm">{ingredientDetails?.name || 'Unknown Ingredient'}</p>
+                    <p className="text-[10px] text-on-surface-variant uppercase font-medium">{ingredientDetails?.category}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="number" 
+                      value={ing.quantity}
+                      onChange={(e) => {
+                        const newIngs = [...ingredients];
+                        newIngs[i].quantity = parseFloat(e.target.value);
+                        setIngredients(newIngs);
+                      }}
+                      className="w-16 bg-surface-lowest border-none rounded-lg px-2 py-1 text-center font-bold text-sm"
+                    />
+                    <span className="text-xs font-bold text-on-surface-variant min-w-[40px]">{ing.unit}</span>
+                  </div>
+                  <button onClick={() => handleRemoveIngredient(i)} className="p-2 text-error hover:bg-error/10 rounded-full transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
             <button 
-              onClick={handleAddIngredient}
+              onClick={() => setIsPickerOpen(true)}
               className="w-full py-4 rounded-lg bg-surface-container-low border-2 border-dashed border-outline-variant/20 text-on-surface-variant font-bold flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors"
             >
               <PlusCircle className="w-5 h-5" /> Add Ingredient
@@ -202,6 +218,13 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({ recipe, 
           </div>
         </section>
       </div>
+
+      <IngredientPicker 
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={handleSelectIngredient}
+        onAddNew={() => onAddNewIngredient?.()}
+      />
 
       {/* Nutrition Summary */}
       <section className="bg-surface-lowest rounded-lg p-8 shadow-sm">
