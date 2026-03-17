@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { RecipeCard } from '../components/RecipeCard';
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS } from '../constants';
+import { Recipe, Ingredient } from '../types';
 
 import { RecipePicker } from '../components/RecipePicker';
 
@@ -183,12 +184,27 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
 };
 
 interface RecipesScreenProps {
+  recipes: Recipe[];
   onRecipeClick: (id: string) => void;
   onEditRecipe: (id: string) => void;
 }
 
-export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick, onEditRecipe }) => {
-  const filters = ['All Recipes', 'Quick & Easy', 'Vegetarian', 'High Protein', 'Low Carb'];
+export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeClick, onEditRecipe }) => {
+  const [selectedFilter, setSelectedFilter] = React.useState('All Recipes');
+
+  // Extract unique tags from all recipes
+  const allTags = React.useMemo(() => {
+    const tags = new Set<string>();
+    recipes.forEach(r => r.tags.forEach(t => tags.add(t)));
+    return ['All Recipes', ...Array.from(tags).sort()];
+  }, [recipes]);
+
+  const filteredRecipes = React.useMemo(() => {
+    if (selectedFilter === 'All Recipes') return recipes;
+    return recipes.filter(r => r.tags.includes(selectedFilter));
+  }, [recipes, selectedFilter]);
+
+  const heroRecipe = recipes[0] || INITIAL_RECIPES[0];
 
   return (
     <motion.div 
@@ -200,50 +216,47 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick, onE
         <h2 className="text-3xl font-extrabold tracking-tight mb-6">Daily Inspiration</h2>
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[500px]">
           <div 
-            onClick={() => onRecipeClick(INITIAL_RECIPES[0].id)}
+            onClick={() => onRecipeClick(heroRecipe.id)}
             className="md:col-span-8 group relative overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer"
           >
             <img 
-              src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1200" 
+              src={heroRecipe.image} 
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               alt="Hero"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-0 p-8 w-full">
-              <span className="inline-block px-4 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-xs font-bold mb-4">EDITOR'S CHOICE</span>
-              <h3 className="text-white text-4xl font-extrabold mb-2">Summer Harvest Buddha Bowl</h3>
-              <p className="text-white/80 max-w-md mb-6 leading-relaxed">A nutrient-dense symphony of roasted sweet potatoes, quinoa, and avocado lime dressing.</p>
+              <span className="inline-block px-4 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-xs font-bold mb-4 uppercase tracking-wider">EDITOR'S CHOICE</span>
+              <h3 className="text-white text-4xl font-extrabold mb-2">{heroRecipe.title}</h3>
+              <p className="text-white/80 max-w-md mb-6 leading-relaxed line-clamp-2">{heroRecipe.description}</p>
               <div className="flex gap-6">
                 <div className="flex flex-col">
                   <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Calories</span>
-                  <span className="text-white font-bold">420 kcal</span>
+                  <span className="text-white font-bold">{heroRecipe.calories} kcal</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Protein</span>
-                  <span className="text-white font-bold">18g</span>
+                  <span className="text-white font-bold">{heroRecipe.protein}g</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Prep Time</span>
-                  <span className="text-white font-bold">20 min</span>
+                  <span className="text-white font-bold">{heroRecipe.prepTime} min</span>
                 </div>
               </div>
             </div>
           </div>
           <div className="md:col-span-4 grid grid-rows-2 gap-6">
-            {[
-              { id: INITIAL_RECIPES[1].id, title: 'Rustic Tomato Bisque', img: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=400' },
-              { id: INITIAL_RECIPES[2].id, title: 'Mediterranean Mezze', img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=400' }
-            ].map((item, i) => (
+            {recipes.slice(1, 3).map((item, i) => (
               <div 
-                key={i} 
+                key={item.id} 
                 onClick={() => onRecipeClick(item.id)}
                 className="relative overflow-hidden rounded-lg bg-surface-container-lowest group cursor-pointer"
               >
-                <img src={item.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={item.title} />
+                <img src={item.image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={item.title} />
                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />
                 <div className="absolute inset-0 flex flex-col justify-end p-6">
                   <h4 className="text-white text-xl font-bold">{item.title}</h4>
-                  <p className="text-white/80 text-sm">Comfort in a bowl.</p>
+                  <p className="text-white/80 text-sm line-clamp-1">{item.description}</p>
                 </div>
               </div>
             ))}
@@ -252,11 +265,14 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick, onE
       </header>
 
       <section className="mb-10 flex gap-3 overflow-x-auto no-scrollbar pb-2">
-        {filters.map((filter, i) => (
+        {allTags.map((filter) => (
           <button 
             key={filter}
+            onClick={() => setSelectedFilter(filter)}
             className={`px-6 py-2.5 rounded-full font-bold whitespace-nowrap transition-all ${
-              i === 0 ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+              selectedFilter === filter 
+                ? 'bg-primary text-on-primary shadow-sm' 
+                : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
             }`}
           >
             {filter}
@@ -265,7 +281,7 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick, onE
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {INITIAL_RECIPES.map(recipe => (
+        {filteredRecipes.map(recipe => (
           <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} onEdit={onEditRecipe} />
         ))}
       </section>
@@ -295,11 +311,21 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick, onE
 import { IngredientCard } from '../components/IngredientCard';
 
 interface IngredientsScreenProps {
+  ingredients: Ingredient[];
   onEditIngredient: (id: string) => void;
   onNewIngredient: () => void;
 }
 
-export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ onEditIngredient, onNewIngredient }) => {
+export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ ingredients, onEditIngredient, onNewIngredient }) => {
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  const filteredIngredients = React.useMemo(() => {
+    return ingredients.filter(ing => 
+      ing.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ing.category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [ingredients, searchQuery]);
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
@@ -322,6 +348,8 @@ export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ onEditIngr
             className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-lg border-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-on-surface-variant/50" 
             placeholder="Search ingredients..." 
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <button 
@@ -342,7 +370,7 @@ export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ onEditIngr
           <div className="col-span-1 text-center">Fat</div>
           <div className="col-span-2 text-right">Actions</div>
         </div>
-        {INITIAL_INGREDIENTS.map(ing => (
+        {filteredIngredients.map(ing => (
           <IngredientCard key={ing.id} ingredient={ing} onEdit={onEditIngredient} />
         ))}
       </div>

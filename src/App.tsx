@@ -12,11 +12,13 @@ type ViewState = 'main' | 'edit-ingredient' | 'create-recipe' | 'edit-recipe' | 
 export default function App() {
   const [activeTab, setActiveTab] = useState('planner');
   const [currentView, setCurrentView] = useState<ViewState>('main');
+  const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
+  const [recipes, setRecipes] = useState<Recipe[]>(INITIAL_RECIPES);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | undefined>();
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
 
   const handleEditIngredient = (id: string) => {
-    const ing = INITIAL_INGREDIENTS.find(i => i.id === id);
+    const ing = ingredients.find(i => i.id === id);
     setSelectedIngredient(ing);
     setCurrentView('edit-ingredient');
   };
@@ -26,27 +28,60 @@ export default function App() {
     setCurrentView('edit-ingredient');
   };
 
+  const handleSaveIngredient = (ing: Partial<Ingredient>) => {
+    if (selectedIngredient) {
+      setIngredients(ingredients.map(i => i.id === selectedIngredient.id ? { ...i, ...ing } as Ingredient : i));
+    } else {
+      const newIng: Ingredient = {
+        ...ing,
+        id: Math.random().toString(36).substr(2, 9),
+      } as Ingredient;
+      setIngredients([...ingredients, newIng]);
+    }
+    setCurrentView('main');
+  };
+
   const handleNewRecipe = () => {
     setSelectedRecipe(undefined);
     setCurrentView('create-recipe');
   };
 
   const handleEditRecipe = (id: string) => {
-    const recipe = INITIAL_RECIPES.find(r => r.id === id);
+    const recipe = recipes.find(r => r.id === id);
     if (recipe) {
       setSelectedRecipe(recipe);
       setCurrentView('edit-recipe');
     }
   };
 
+  const handleSaveRecipe = (recipeData: Partial<Recipe>) => {
+    if (selectedRecipe) {
+      setRecipes(recipes.map(r => r.id === selectedRecipe.id ? { ...r, ...recipeData } as Recipe : r));
+    } else {
+      const newRecipe: Recipe = {
+        ...recipeData,
+        id: Math.random().toString(36).substr(2, 9),
+        tags: recipeData.tags || [],
+        ingredients: recipeData.ingredients || [],
+        instructions: recipeData.instructions || [],
+        image: recipeData.image || 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=800',
+        calories: recipeData.calories || 0,
+        protein: recipeData.protein || 0,
+        carbs: recipeData.carbs || 0,
+        fats: recipeData.fats || 0,
+      } as Recipe;
+      setRecipes([...recipes, newRecipe]);
+    }
+    setCurrentView('main');
+  };
+
   const handleDeleteRecipe = (id: string) => {
-    // In a real app, we'd remove it from state/DB
-    console.log('Deleting recipe:', id);
+    setRecipes(recipes.filter(r => r.id !== id));
     setCurrentView('main');
   };
 
   const handleRecipeClick = (id: string) => {
-    const recipe = INITIAL_RECIPES.find(r => r.id === id);
+    const recipe = recipes.find(r => r.id === id);
     if (recipe) {
       setSelectedRecipe(recipe);
       setCurrentView('recipe-detail');
@@ -58,11 +93,11 @@ export default function App() {
       case 'planner':
         return <PlannerScreen onRecipeClick={handleRecipeClick} />;
       case 'recipes':
-        return <RecipesScreen onRecipeClick={handleRecipeClick} onEditRecipe={handleEditRecipe} />;
+        return <RecipesScreen recipes={recipes} onRecipeClick={handleRecipeClick} onEditRecipe={handleEditRecipe} />;
       case 'ingredients':
         return (
           <div className="relative">
-            <IngredientsScreen onEditIngredient={handleEditIngredient} onNewIngredient={handleNewIngredient} />
+            <IngredientsScreen ingredients={ingredients} onEditIngredient={handleEditIngredient} onNewIngredient={handleNewIngredient} />
             {/* FAB for Ingredients */}
             <button 
               onClick={handleNewIngredient}
@@ -83,7 +118,7 @@ export default function App() {
         <EditIngredientScreen 
           ingredient={selectedIngredient} 
           onBack={() => setCurrentView('main')} 
-          onSave={() => setCurrentView('main')}
+          onSave={handleSaveIngredient}
         />
       </div>
     );
@@ -95,7 +130,7 @@ export default function App() {
         <CreateRecipeScreen 
           recipe={selectedRecipe}
           onBack={() => setCurrentView('main')} 
-          onSave={() => setCurrentView('main')}
+          onSave={handleSaveRecipe}
           onDelete={handleDeleteRecipe}
           onAddNewIngredient={handleNewIngredient}
         />

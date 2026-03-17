@@ -120,8 +120,8 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
         <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
       </div>
       <div className="p-4 flex flex-col justify-center flex-grow">
-        <div className="flex gap-2 mb-2">
-          {recipe.tags.slice(0, 1).map(tag => (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {recipe.tags.map(tag => (
             <span key={tag} className="bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
               {tag}
             </span>

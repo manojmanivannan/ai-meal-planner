@@ -27,7 +27,22 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
   const [difficulty, setDifficulty] = React.useState(recipe?.difficulty || 'Intermediate');
   const [ingredients, setIngredients] = React.useState(recipe?.ingredients || []);
   const [instructions, setInstructions] = React.useState(recipe?.instructions || ['']);
+  const [tags, setTags] = React.useState<string[]>(recipe?.tags || []);
+  const [newTag, setNewTag] = React.useState('');
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
+
+  const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && newTag.trim()) {
+      if (!tags.includes(newTag.trim().toUpperCase())) {
+        setTags([...tags, newTag.trim().toUpperCase()]);
+      }
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
 
   const handleSelectIngredient = (ing: Ingredient) => {
     setIngredients([...ingredients, { 
@@ -145,6 +160,29 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
             <option value="Advanced">Advanced</option>
           </select>
         </div>
+
+        {/* Tags Section */}
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Tags</p>
+          <div className="flex flex-wrap gap-2">
+            {tags.map(tag => (
+              <span key={tag} className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+                {tag}
+                <button onClick={() => handleRemoveTag(tag)} className="hover:text-error transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <input 
+              type="text"
+              placeholder="Add tag + Enter"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={handleAddTag}
+              className="bg-surface-container-low border-none rounded-full px-4 py-1 text-xs font-bold focus:ring-2 focus:ring-primary/30 min-w-[120px]"
+            />
+          </div>
+        </div>
       </section>
 
       {/* Ingredients & Instructions */}
@@ -253,7 +291,7 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
             Cancel
           </button>
           <button 
-            onClick={() => onSave({ title, description, prepTime, servings, difficulty, ingredients, instructions })}
+            onClick={() => onSave({ title, description, prepTime, servings, difficulty, ingredients, instructions, tags })}
             className="flex-[2] py-4 rounded-full gradient-primary text-on-primary font-bold shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
           >
             <CheckCircle className="w-5 h-5" /> {recipe ? 'Update Recipe' : 'Save Recipe'}
