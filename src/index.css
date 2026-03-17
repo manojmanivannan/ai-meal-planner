@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Plus Jakarta Sans", sans-serif;
+  
+  --color-surface: #f8faf8;
+  --color-surface-low: #f2f4f2;
+  --color-surface-lowest: #ffffff;
+  --color-surface-container: #eceeec;
+  --color-surface-container-high: #e6e9e7;
+  
+  --color-primary: #186a22;
+  --color-primary-container: #358438;
+  --color-secondary: #835500;
+  --color-secondary-container: #feb64c;
+  --color-tertiary: #3d6700;
+  --color-tertiary-fixed: #b9f474;
+  
+  --color-on-background: #191c1b;
+  --color-on-surface: #191c1b;
+  --color-on-surface-variant: #40493d;
+  
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-background font-sans antialiased;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.glass {
+  @apply bg-surface/80 backdrop-blur-xl;
+}
+
+.gradient-primary {
+  @apply bg-gradient-to-r from-primary to-primary-container;
+}
+
+.text-gradient {
+  @apply bg-gradient-to-r from-primary to-primary-container bg-clip-text text-transparent;
+}
