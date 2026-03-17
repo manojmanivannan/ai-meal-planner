@@ -8,16 +8,26 @@ import {
 import { RecipeCard } from '../components/RecipeCard';
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS } from '../constants';
 
-export const PlannerScreen: React.FC = () => {
-  const days = [
-    { label: 'MON', day: '14', active: true },
-    { label: 'TUE', day: '15' },
-    { label: 'WED', day: '16' },
-    { label: 'THU', day: '17' },
-    { label: 'FRI', day: '18' },
-    { label: 'SAT', day: '19' },
-    { label: 'SUN', day: '20' },
-  ];
+interface PlannerScreenProps {
+  onRecipeClick: (id: string) => void;
+}
+
+export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) => {
+  const [selectedDay, setSelectedDay] = React.useState('MON');
+  const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+  // Mock data for different days
+  const dayPlans: Record<string, { breakfast: number, lunch: number, snack: number, dinner: number }> = {
+    'MON': { breakfast: 0, lunch: 1, snack: 0, dinner: 2 },
+    'TUE': { breakfast: 1, lunch: 2, snack: 0, dinner: 0 },
+    'WED': { breakfast: 2, lunch: 0, snack: 1, dinner: 1 },
+    'THU': { breakfast: 0, lunch: 1, snack: 0, dinner: 2 },
+    'FRI': { breakfast: 1, lunch: 2, snack: 0, dinner: 0 },
+    'SAT': { breakfast: 2, lunch: 0, snack: 1, dinner: 1 },
+    'SUN': { breakfast: 0, lunch: 1, snack: 0, dinner: 2 },
+  };
+
+  const currentPlan = dayPlans[selectedDay];
 
   return (
     <motion.div 
@@ -27,22 +37,24 @@ export const PlannerScreen: React.FC = () => {
     >
       <div className="mb-10">
         <h2 className="text-4xl font-headline font-extrabold tracking-tight mb-2">Weekly Planner</h2>
-        <p className="text-on-surface-variant font-medium">Curate your nourishment for the week ahead.</p>
+        <p className="text-on-surface-variant font-medium">Curate your nourishment for {selectedDay === 'MON' ? 'Monday' : selectedDay}.</p>
       </div>
 
       {/* Date Picker */}
       <section className="mb-12">
         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 snap-x">
           {days.map((day) => (
-            <div key={day.day} className="flex-shrink-0 snap-center">
-              <button className={`flex flex-col items-center justify-center w-20 h-28 rounded-xl transition-all duration-300 ${
-                day.active 
-                  ? 'bg-primary text-on-primary shadow-lg scale-105' 
-                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
-              }`}>
-                <span className={`text-[10px] font-bold mb-1 ${day.active ? 'opacity-80' : ''}`}>{day.label}</span>
-                <span className="text-2xl font-bold">{day.day}</span>
-                {day.active && <div className="mt-2 w-1.5 h-1.5 bg-tertiary-fixed rounded-full" />}
+            <div key={day} className="flex-shrink-0 snap-center">
+              <button 
+                onClick={() => setSelectedDay(day)}
+                className={`flex flex-col items-center justify-center w-20 h-20 rounded-xl transition-all duration-300 ${
+                  selectedDay === day 
+                    ? 'bg-primary text-on-primary shadow-lg scale-105' 
+                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                <span className={`text-sm font-bold ${selectedDay === day ? 'opacity-100' : 'opacity-60'}`}>{day}</span>
+                {selectedDay === day && <div className="mt-2 w-1.5 h-1.5 bg-tertiary-fixed rounded-full" />}
               </button>
             </div>
           ))}
@@ -50,79 +62,57 @@ export const PlannerScreen: React.FC = () => {
       </section>
 
       {/* Meal Slots */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Breakfast */}
-        <div className="md:col-span-7">
-          <div className="bg-surface-container-low rounded-lg p-6 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <Sunrise className="w-6 h-6 text-primary" />
-                <h3 className="text-xl font-bold">1. Breakfast</h3>
-              </div>
-              <button className="p-2 rounded-full hover:bg-surface-container-high text-primary">
-                <Plus className="w-6 h-6" />
-              </button>
-            </div>
-            <RecipeCard recipe={INITIAL_RECIPES[0]} />
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-2">
+            <Sunrise className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-bold">Breakfast</h3>
           </div>
+          <RecipeCard 
+            recipe={INITIAL_RECIPES[currentPlan.breakfast]} 
+            variant="planner" 
+            onClick={onRecipeClick}
+          />
         </div>
 
         {/* Lunch */}
-        <div className="md:col-span-5">
-          <div className="bg-surface-container-low rounded-lg p-6 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <Sun className="w-6 h-6 text-primary" />
-                <h3 className="text-xl font-bold">2. Lunch</h3>
-              </div>
-              <button className="p-2 rounded-full hover:bg-surface-container-high text-primary">
-                <Plus className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="bg-surface-lowest rounded-lg overflow-hidden shadow-sm flex-grow">
-              <img src={INITIAL_RECIPES[1].image} alt="Lunch" className="w-full h-32 object-cover" />
-              <div className="p-4">
-                <h4 className="font-bold text-lg mb-1">{INITIAL_RECIPES[1].title}</h4>
-                <p className="text-sm text-on-surface-variant mb-4 line-clamp-2">{INITIAL_RECIPES[1].description}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-primary">24g Protein</span>
-                  <button className="text-on-surface-variant hover:text-primary"><Edit2 className="w-4 h-4" /></button>
-                </div>
-              </div>
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-2">
+            <Sun className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-bold">Lunch</h3>
           </div>
+          <RecipeCard 
+            recipe={INITIAL_RECIPES[currentPlan.lunch]} 
+            variant="planner" 
+            onClick={onRecipeClick}
+          />
         </div>
 
         {/* Snack */}
-        <div className="md:col-span-4">
-          <div className="bg-surface-container-low rounded-lg p-6 h-full">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <Coffee className="w-6 h-6 text-primary" />
-                <h3 className="text-xl font-bold">3. Snack</h3>
-              </div>
-              <button className="p-2 rounded-full hover:bg-surface-container-high text-primary">
-                <Plus className="w-6 h-6" />
-              </button>
-            </div>
-            <RecipeCard recipe={{...INITIAL_RECIPES[0], title: 'Protein Bites', image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&q=80&w=200'}} variant="compact" />
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-2">
+            <Coffee className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-bold">Snack</h3>
           </div>
+          <RecipeCard 
+            recipe={{...INITIAL_RECIPES[currentPlan.snack], title: 'Protein Bites', image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&q=80&w=200'}} 
+            variant="planner" 
+            onClick={onRecipeClick}
+          />
         </div>
 
         {/* Dinner */}
-        <div className="md:col-span-8">
-          <div className="bg-primary-container/5 rounded-lg p-6 h-full flex flex-col border border-primary/5">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <Moon className="w-6 h-6 text-primary" />
-                <h3 className="text-xl font-bold">4. Dinner</h3>
-              </div>
-              <button className="p-2 rounded-full hover:bg-surface-container-high text-primary">
-                <Plus className="w-6 h-6" />
-              </button>
-            </div>
-            <RecipeCard recipe={INITIAL_RECIPES[2]} variant="hero" />
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-2">
+            <Moon className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-bold">Dinner</h3>
           </div>
+          <RecipeCard 
+            recipe={INITIAL_RECIPES[currentPlan.dinner]} 
+            variant="planner" 
+            onClick={onRecipeClick}
+          />
         </div>
       </div>
 
@@ -140,7 +130,11 @@ export const PlannerScreen: React.FC = () => {
   );
 };
 
-export const RecipesScreen: React.FC = () => {
+interface RecipesScreenProps {
+  onRecipeClick: (id: string) => void;
+}
+
+export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick }) => {
   const filters = ['All Recipes', 'Quick & Easy', 'Vegetarian', 'High Protein', 'Low Carb'];
 
   return (
@@ -152,7 +146,10 @@ export const RecipesScreen: React.FC = () => {
       <header className="mb-12">
         <h2 className="text-3xl font-extrabold tracking-tight mb-6">Daily Inspiration</h2>
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[500px]">
-          <div className="md:col-span-8 group relative overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md transition-all">
+          <div 
+            onClick={() => onRecipeClick(INITIAL_RECIPES[0].id)}
+            className="md:col-span-8 group relative overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer"
+          >
             <img 
               src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1200" 
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
@@ -181,10 +178,14 @@ export const RecipesScreen: React.FC = () => {
           </div>
           <div className="md:col-span-4 grid grid-rows-2 gap-6">
             {[
-              { title: 'Rustic Tomato Bisque', img: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=400' },
-              { title: 'Mediterranean Mezze', img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=400' }
+              { id: INITIAL_RECIPES[1].id, title: 'Rustic Tomato Bisque', img: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=400' },
+              { id: INITIAL_RECIPES[2].id, title: 'Mediterranean Mezze', img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80&w=400' }
             ].map((item, i) => (
-              <div key={i} className="relative overflow-hidden rounded-lg bg-surface-container-lowest group">
+              <div 
+                key={i} 
+                onClick={() => onRecipeClick(item.id)}
+                className="relative overflow-hidden rounded-lg bg-surface-container-lowest group cursor-pointer"
+              >
                 <img src={item.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={item.title} />
                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />
                 <div className="absolute inset-0 flex flex-col justify-end p-6">
@@ -212,63 +213,7 @@ export const RecipesScreen: React.FC = () => {
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {INITIAL_RECIPES.map(recipe => (
-          <article key={recipe.id} className="bg-surface-lowest rounded-lg overflow-hidden flex flex-col transition-all duration-300 hover:bg-surface-container-high group">
-            <div className="h-64 overflow-hidden relative">
-              <img src={recipe.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={recipe.title} />
-              <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/40 transition-colors">
-                <Heart className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-8">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-2xl font-bold text-on-surface">{recipe.title}</h3>
-                <div className="flex items-center gap-1 bg-tertiary-fixed/30 px-3 py-1 rounded-full">
-                  <Clock className="w-3.5 h-3.5 text-tertiary" />
-                  <span className="text-xs font-bold text-tertiary">{recipe.prepTime} MIN</span>
-                </div>
-              </div>
-              
-              <div className="mb-8">
-                <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant mb-4 flex items-center gap-2">
-                  Ingredients <span className="w-8 h-px bg-surface-container-high" />
-                </h4>
-                <ul className="grid grid-cols-2 gap-y-2 gap-x-6">
-                  <li className="flex justify-between text-on-surface-variant py-1">
-                    <span className="font-medium text-on-surface">Main Ingredient</span>
-                    <span className="text-xs font-bold">250g</span>
-                  </li>
-                  <li className="flex justify-between text-on-surface-variant py-1">
-                    <span className="font-medium text-on-surface">Seasoning</span>
-                    <span className="text-xs font-bold">12 pcs</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mb-8">
-                <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant mb-4 flex items-center gap-2">
-                  Method <span className="w-8 h-px bg-surface-container-high" />
-                </h4>
-                <p className="text-on-surface-variant leading-relaxed line-clamp-2">{recipe.description}</p>
-                <button className="mt-2 text-primary font-bold text-sm flex items-center gap-1">
-                  Read Full Guide <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="bg-surface-container-low rounded-xl p-6 grid grid-cols-4 gap-4">
-                {[
-                  { label: 'Calories', val: recipe.calories },
-                  { label: 'Protein', val: `${recipe.protein}g` },
-                  { label: 'Fat', val: `${recipe.fats}g` },
-                  { label: 'Carbs', val: `${recipe.carbs}g` }
-                ].map(stat => (
-                  <div key={stat.label} className="text-center">
-                    <span className="block text-[10px] font-black uppercase text-on-surface-variant/60 tracking-tighter">{stat.label}</span>
-                    <span className="text-lg font-extrabold text-on-surface">{stat.val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </article>
+          <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} />
         ))}
       </section>
 

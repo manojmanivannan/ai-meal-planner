@@ -3,15 +3,17 @@ import { TopBar, BottomNav } from './components/Navigation';
 import { PlannerScreen, RecipesScreen, IngredientsScreen } from './screens/MainScreens';
 import { EditIngredientScreen } from './screens/EditIngredientScreen';
 import { CreateRecipeScreen } from './screens/CreateRecipeScreen';
+import { RecipeDetailScreen } from './screens/RecipeDetailScreen';
 import { Ingredient, Recipe } from './types';
-import { INITIAL_INGREDIENTS } from './constants';
+import { INITIAL_INGREDIENTS, INITIAL_RECIPES } from './constants';
 
-type ViewState = 'main' | 'edit-ingredient' | 'create-recipe';
+type ViewState = 'main' | 'edit-ingredient' | 'create-recipe' | 'recipe-detail';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('planner');
   const [currentView, setCurrentView] = useState<ViewState>('main');
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | undefined>();
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
 
   const handleEditIngredient = (id: string) => {
     const ing = INITIAL_INGREDIENTS.find(i => i.id === id);
@@ -28,12 +30,20 @@ export default function App() {
     setCurrentView('create-recipe');
   };
 
+  const handleRecipeClick = (id: string) => {
+    const recipe = INITIAL_RECIPES.find(r => r.id === id);
+    if (recipe) {
+      setSelectedRecipe(recipe);
+      setCurrentView('recipe-detail');
+    }
+  };
+
   const renderMainContent = () => {
     switch (activeTab) {
       case 'planner':
-        return <PlannerScreen />;
+        return <PlannerScreen onRecipeClick={handleRecipeClick} />;
       case 'recipes':
-        return <RecipesScreen />;
+        return <RecipesScreen onRecipeClick={handleRecipeClick} />;
       case 'ingredients':
         return (
           <div className="relative">
@@ -70,6 +80,17 @@ export default function App() {
         <CreateRecipeScreen 
           onBack={() => setCurrentView('main')} 
           onSave={() => setCurrentView('main')}
+        />
+      </div>
+    );
+  }
+
+  if (currentView === 'recipe-detail' && selectedRecipe) {
+    return (
+      <div className="min-h-screen bg-surface">
+        <RecipeDetailScreen 
+          recipe={selectedRecipe} 
+          onBack={() => setCurrentView('main')} 
         />
       </div>
     );
