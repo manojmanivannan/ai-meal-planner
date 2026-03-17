@@ -8,26 +8,118 @@ import {
 import { RecipeCard } from '../components/RecipeCard';
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS } from '../constants';
 
+import { RecipePicker } from '../components/RecipePicker';
+
 interface PlannerScreenProps {
   onRecipeClick: (id: string) => void;
 }
 
+type MealSlot = 'breakfast' | 'lunch' | 'snack' | 'dinner';
+
 export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) => {
   const [selectedDay, setSelectedDay] = React.useState('MON');
+  const [isPickerOpen, setIsPickerOpen] = React.useState(false);
+  const [activeSlot, setActiveSlot] = React.useState<{ day: string, slot: MealSlot } | null>(null);
+
   const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
-  // Mock data for different days
-  const dayPlans: Record<string, { breakfast: number, lunch: number, snack: number, dinner: number }> = {
-    'MON': { breakfast: 0, lunch: 1, snack: 0, dinner: 2 },
-    'TUE': { breakfast: 1, lunch: 2, snack: 0, dinner: 0 },
-    'WED': { breakfast: 2, lunch: 0, snack: 1, dinner: 1 },
-    'THU': { breakfast: 0, lunch: 1, snack: 0, dinner: 2 },
-    'FRI': { breakfast: 1, lunch: 2, snack: 0, dinner: 0 },
-    'SAT': { breakfast: 2, lunch: 0, snack: 1, dinner: 1 },
-    'SUN': { breakfast: 0, lunch: 1, snack: 0, dinner: 2 },
-  };
+  // Initial state from mock data, but using recipe IDs or null
+  const [dayPlans, setDayPlans] = React.useState<Record<string, Record<MealSlot, string | null>>>(() => {
+    const initial: Record<string, Record<MealSlot, string | null>> = {};
+    days.forEach(day => {
+      initial[day] = {
+        breakfast: INITIAL_RECIPES[0].id,
+        lunch: INITIAL_RECIPES[1].id,
+        snack: null,
+        dinner: INITIAL_RECIPES[2].id
+      };
+    });
+    // Add some variety to mock data
+    initial['MON'].snack = INITIAL_RECIPES[0].id;
+    initial['TUE'].dinner = null;
+    initial['WED'].lunch = null;
+    return initial;
+  });
 
   const currentPlan = dayPlans[selectedDay];
+
+  const handleAddRecipe = (slot: MealSlot) => {
+    setActiveSlot({ day: selectedDay, slot });
+    setIsPickerOpen(true);
+  };
+
+  const handleRemoveRecipe = (slot: MealSlot) => {
+    setDayPlans(prev => ({
+      ...prev,
+      [selectedDay]: {
+        ...prev[selectedDay],
+        [slot]: null
+      }
+    }));
+  };
+
+  const handleSelectRecipe = (recipeId: string) => {
+    if (activeSlot) {
+      setDayPlans(prev => ({
+        ...prev,
+        [activeSlot.day]: {
+          ...prev[activeSlot.day],
+          [activeSlot.slot]: recipeId
+        }
+      }));
+    }
+  };
+
+  const renderMealSlot = (slot: MealSlot, icon: React.ReactNode, title: string) => {
+    const recipeId = currentPlan[slot];
+    const recipe = recipeId ? INITIAL_RECIPES.find(r => r.id === recipeId) : null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-3">
+            <span className="text-primary">{icon}</span>
+            <h3 className="text-lg font-bold">{title}</h3>
+          </div>
+          {recipe && (
+            <div className="flex gap-2">
+              <button 
+                onClick={() => handleAddRecipe(slot)}
+                className="text-[10px] font-bold text-primary uppercase tracking-wider hover:underline"
+              >
+                Change
+              </button>
+              <span className="text-on-surface-variant/20">|</span>
+              <button 
+                onClick={() => handleRemoveRecipe(slot)}
+                className="text-[10px] font-bold text-error uppercase tracking-wider hover:underline"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {recipe ? (
+          <RecipeCard 
+            recipe={recipe} 
+            variant="planner" 
+            onClick={onRecipeClick}
+          />
+        ) : (
+          <button 
+            onClick={() => handleAddRecipe(slot)}
+            className="w-full h-48 rounded-xl border-2 border-dashed border-surface-container-high bg-surface-container-low/30 flex flex-col items-center justify-center gap-3 group hover:bg-surface-container-low hover:border-primary/30 transition-all"
+          >
+            <div className="w-12 h-12 rounded-full bg-surface-lowest flex items-center justify-center text-on-surface-variant group-hover:text-primary group-hover:scale-110 transition-all shadow-sm">
+              <Plus className="w-6 h-6" />
+            </div>
+            <span className="text-sm font-bold text-on-surface-variant group-hover:text-primary">Add {title}</span>
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <motion.div 
@@ -63,58 +155,18 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
 
       {/* Meal Slots */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Breakfast */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 px-2">
-            <Sunrise className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-bold">Breakfast</h3>
-          </div>
-          <RecipeCard 
-            recipe={INITIAL_RECIPES[currentPlan.breakfast]} 
-            variant="planner" 
-            onClick={onRecipeClick}
-          />
-        </div>
-
-        {/* Lunch */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 px-2">
-            <Sun className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-bold">Lunch</h3>
-          </div>
-          <RecipeCard 
-            recipe={INITIAL_RECIPES[currentPlan.lunch]} 
-            variant="planner" 
-            onClick={onRecipeClick}
-          />
-        </div>
-
-        {/* Snack */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 px-2">
-            <Coffee className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-bold">Snack</h3>
-          </div>
-          <RecipeCard 
-            recipe={{...INITIAL_RECIPES[currentPlan.snack], title: 'Protein Bites', image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&q=80&w=200'}} 
-            variant="planner" 
-            onClick={onRecipeClick}
-          />
-        </div>
-
-        {/* Dinner */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 px-2">
-            <Moon className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-bold">Dinner</h3>
-          </div>
-          <RecipeCard 
-            recipe={INITIAL_RECIPES[currentPlan.dinner]} 
-            variant="planner" 
-            onClick={onRecipeClick}
-          />
-        </div>
+        {renderMealSlot('breakfast', <Sunrise className="w-5 h-5" />, 'Breakfast')}
+        {renderMealSlot('lunch', <Sun className="w-5 h-5" />, 'Lunch')}
+        {renderMealSlot('snack', <Coffee className="w-5 h-5" />, 'Snack')}
+        {renderMealSlot('dinner', <Moon className="w-5 h-5" />, 'Dinner')}
       </div>
+
+      <RecipePicker 
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={handleSelectRecipe}
+        title={`Select ${activeSlot?.slot || 'Recipe'}`}
+      />
 
       {/* CTA */}
       <section className="mt-12 bg-surface-lowest p-8 rounded-lg shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
