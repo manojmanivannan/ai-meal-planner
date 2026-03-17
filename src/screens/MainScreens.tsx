@@ -168,17 +168,6 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
         onSelect={handleSelectRecipe}
         title={`Select ${activeSlot?.slot || 'Recipe'}`}
       />
-
-      {/* CTA */}
-      <section className="mt-12 bg-surface-lowest p-8 rounded-lg shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
-        <div className="max-w-md">
-          <h3 className="text-2xl font-bold mb-2">Ready for the market?</h3>
-          <p className="text-on-surface-variant">We've compiled your shopping list based on the 12 recipes planned for this week.</p>
-        </div>
-        <button className="w-full md:w-auto gradient-primary text-on-primary py-4 px-10 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all active:scale-95">
-          Generate Shopping List
-        </button>
-      </section>
     </motion.div>
   );
 };
@@ -284,25 +273,6 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
         {filteredRecipes.map(recipe => (
           <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} onEdit={onEditRecipe} />
         ))}
-      </section>
-
-      <section className="mt-20 relative overflow-hidden rounded-lg bg-primary p-12 text-on-primary">
-        <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-12 relative z-10">
-          <div>
-            <h2 className="text-4xl font-extrabold mb-4 leading-tight">Unlock Personalized Meal Plans</h2>
-            <p className="text-on-primary/80 text-lg mb-8 leading-relaxed">Join 20,000+ home cooks who get curated recipes based on their nutritional goals and dietary needs.</p>
-            <button className="bg-secondary-container text-on-secondary-container px-8 py-4 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-lg">
-              Upgrade to Pro
-            </button>
-          </div>
-          <div className="hidden md:block">
-            <div className="grid grid-cols-2 gap-4">
-              <img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=300" className="rounded-lg transform rotate-2" alt="Food" />
-              <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=300" className="rounded-lg transform -rotate-3 mt-8" alt="Food" />
-            </div>
-          </div>
-        </div>
-        <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-primary-container/30 blur-3xl" />
       </section>
     </motion.div>
   );
