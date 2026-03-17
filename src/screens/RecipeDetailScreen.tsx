@@ -1,14 +1,16 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Clock, Users, Star, Flame, CheckCircle2, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Star, Flame, CheckCircle2, ShoppingCart, Edit2, Trash2 } from 'lucide-react';
 import { Recipe } from '../types';
 
 interface RecipeDetailScreenProps {
   recipe: Recipe;
   onBack: () => void;
+  onEdit: () => void;
+  onDelete: (id: string) => void;
 }
 
-export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({ recipe, onBack }) => {
+export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({ recipe, onBack, onEdit, onDelete }) => {
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -19,12 +21,34 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({ recipe, 
       <div className="relative h-[50vh] w-full overflow-hidden rounded-b-[3rem]">
         <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <button 
-          onClick={onBack}
-          className="absolute top-8 left-8 w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/40 transition-all"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
+        
+        <div className="absolute top-8 left-8 right-8 flex justify-between items-center">
+          <button 
+            onClick={onBack}
+            className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/40 transition-all"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          
+          <div className="flex gap-3">
+            <button 
+              onClick={onEdit}
+              className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/40 transition-all"
+            >
+              <Edit2 className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => {
+                if (confirm('Are you sure you want to delete this recipe?')) {
+                  onDelete(recipe.id);
+                }
+              }}
+              className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-error hover:bg-error/40 transition-all"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
         
         <div className="absolute bottom-12 left-8 right-8">
           <div className="flex gap-2 mb-4">

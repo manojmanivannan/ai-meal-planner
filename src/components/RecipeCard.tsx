@@ -6,10 +6,15 @@ interface RecipeCardProps {
   recipe: Recipe;
   variant?: 'compact' | 'full' | 'hero' | 'planner';
   onClick?: (id: string) => void;
+  onEdit?: (id: string) => void;
 }
 
-export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full', onClick }) => {
+export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full', onClick, onEdit }) => {
   const handleClick = () => onClick?.(recipe.id);
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(recipe.id);
+  };
 
   if (variant === 'hero') {
     return (
@@ -129,7 +134,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
         </div>
       </div>
       <div className="p-4 flex items-center justify-center">
-        <button className="p-2 text-on-surface-variant hover:text-primary transition-colors" onClick={(e) => { e.stopPropagation(); }}>
+        <button className="p-2 text-on-surface-variant hover:text-primary transition-colors" onClick={handleEdit}>
           <Edit2 className="w-5 h-5" />
         </button>
       </div>

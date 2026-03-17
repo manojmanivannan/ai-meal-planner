@@ -7,7 +7,7 @@ import { RecipeDetailScreen } from './screens/RecipeDetailScreen';
 import { Ingredient, Recipe } from './types';
 import { INITIAL_INGREDIENTS, INITIAL_RECIPES } from './constants';
 
-type ViewState = 'main' | 'edit-ingredient' | 'create-recipe' | 'recipe-detail';
+type ViewState = 'main' | 'edit-ingredient' | 'create-recipe' | 'edit-recipe' | 'recipe-detail';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('planner');
@@ -27,7 +27,22 @@ export default function App() {
   };
 
   const handleNewRecipe = () => {
+    setSelectedRecipe(undefined);
     setCurrentView('create-recipe');
+  };
+
+  const handleEditRecipe = (id: string) => {
+    const recipe = INITIAL_RECIPES.find(r => r.id === id);
+    if (recipe) {
+      setSelectedRecipe(recipe);
+      setCurrentView('edit-recipe');
+    }
+  };
+
+  const handleDeleteRecipe = (id: string) => {
+    // In a real app, we'd remove it from state/DB
+    console.log('Deleting recipe:', id);
+    setCurrentView('main');
   };
 
   const handleRecipeClick = (id: string) => {
@@ -43,7 +58,7 @@ export default function App() {
       case 'planner':
         return <PlannerScreen onRecipeClick={handleRecipeClick} />;
       case 'recipes':
-        return <RecipesScreen onRecipeClick={handleRecipeClick} />;
+        return <RecipesScreen onRecipeClick={handleRecipeClick} onEditRecipe={handleEditRecipe} />;
       case 'ingredients':
         return (
           <div className="relative">
@@ -74,12 +89,14 @@ export default function App() {
     );
   }
 
-  if (currentView === 'create-recipe') {
+  if (currentView === 'create-recipe' || currentView === 'edit-recipe') {
     return (
       <div className="min-h-screen bg-surface p-6">
         <CreateRecipeScreen 
+          recipe={selectedRecipe}
           onBack={() => setCurrentView('main')} 
           onSave={() => setCurrentView('main')}
+          onDelete={handleDeleteRecipe}
         />
       </div>
     );
@@ -91,6 +108,8 @@ export default function App() {
         <RecipeDetailScreen 
           recipe={selectedRecipe} 
           onBack={() => setCurrentView('main')} 
+          onEdit={() => setCurrentView('edit-recipe')}
+          onDelete={handleDeleteRecipe}
         />
       </div>
     );

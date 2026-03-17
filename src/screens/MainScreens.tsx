@@ -184,9 +184,10 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
 
 interface RecipesScreenProps {
   onRecipeClick: (id: string) => void;
+  onEditRecipe: (id: string) => void;
 }
 
-export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick }) => {
+export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick, onEditRecipe }) => {
   const filters = ['All Recipes', 'Quick & Easy', 'Vegetarian', 'High Protein', 'Low Carb'];
 
   return (
@@ -265,7 +266,7 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ onRecipeClick }) =
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {INITIAL_RECIPES.map(recipe => (
-          <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} />
+          <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} onEdit={onEditRecipe} />
         ))}
       </section>
 
