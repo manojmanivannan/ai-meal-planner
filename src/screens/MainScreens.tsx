@@ -50,7 +50,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
     load();
   }, []);
 
-  const mealSlots: MealSlot[] = ['breakfast', 'lunch', 'snack', 'dinner'];
+  const mealSlots: MealSlot[] = ['pre_breakfast', 'breakfast', 'lunch', 'snack', 'dinner'];
 
   const getRecipesForSlot = (day: string, slot: MealSlot): Recipe[] => {
     const entry = weeklyPlan.find(e => e.day.toLowerCase() === day.toLowerCase() && e.meal_type.toLowerCase() === slot.toLowerCase());
@@ -115,28 +115,11 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
 
     return (
       <div className="space-y-4" key={slot}>
-        <div className="flex items-center justify-between px-2 mb-2">
-          <div className="flex items-center gap-3">
-            <span className="text-primary">{mealIcons[slot]}</span>
-            <h3 className="text-xl font-bold">{MEAL_TYPE_LABELS[slot] || slot}</h3>
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between px-1 mb-3 gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-primary flex-shrink-0">{mealIcons[slot]}</span>
+            <h3 className="text-lg font-bold leading-tight">{MEAL_TYPE_LABELS[slot] || slot}</h3>
           </div>
-          {recipes.length > 0 && (
-            <div className="flex items-center gap-3 text-xs font-bold tracking-widest text-on-surface-variant">
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleChangeRecipe(slot, recipes[0].id); }}
-                className="hover:text-primary transition-colors cursor-pointer uppercase py-2"
-              >
-                Change
-              </button>
-              <div className="w-[2px] h-3 bg-outline-variant/30 rounded-full" />
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleRemoveRecipe(slot, recipes[0].id); }}
-                className="hover:text-error transition-colors cursor-pointer uppercase py-2"
-              >
-                Remove
-              </button>
-            </div>
-          )}
         </div>
         
         {recipes.length > 0 ? (
@@ -147,6 +130,8 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
                 recipe={recipe} 
                 variant="planner" 
                 onClick={onRecipeClick}
+                onSwap={(id) => handleChangeRecipe(slot, id)}
+                onRemoveFromPlan={(id) => handleRemoveRecipe(slot, id)}
               />
             ))}
             <button 
@@ -213,7 +198,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
       </section>
 
       {/* Meal Slots */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {mealSlots.map(slot => renderMealSlot(slot))}
       </div>
 
@@ -222,6 +207,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
         onClose={() => setIsPickerOpen(false)}
         onSelect={handleSelectRecipe}
         title={`Select ${activeSlot?.slot ? MEAL_TYPE_LABELS[activeSlot.slot] || activeSlot.slot : 'Recipe'}`}
+        selectedRecipeId={activeSlot?.intent === 'replace' ? activeSlot.oldRecipeId : undefined}
       />
     </motion.div>
   );
@@ -231,26 +217,49 @@ interface RecipesScreenProps {
   recipes: Recipe[];
   onRecipeClick: (id: number) => void;
   onEditRecipe: (id: number) => void;
+  onDeleteRecipe: (id: number) => void;
 }
 
-export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeClick, onEditRecipe }) => {
+export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeClick, onEditRecipe, onDeleteRecipe }) => {
   const [selectedFilter, setSelectedFilter] = React.useState('All Recipes');
+  const [pendingDeletes, setPendingDeletes] = React.useState<number[]>([]);
+  const deleteTimers = React.useRef<Record<number, NodeJS.Timeout>>({});
+
+  const initiateDelete = (id: number) => {
+    setPendingDeletes(prev => [...prev, id]);
+    deleteTimers.current[id] = setTimeout(() => {
+      onDeleteRecipe(id);
+      setPendingDeletes(prev => prev.filter(p => p !== id));
+      delete deleteTimers.current[id];
+    }, 5000); // 5 second timeout
+  };
+
+  const undoDelete = (id: number) => {
+    if (deleteTimers.current[id]) {
+      clearTimeout(deleteTimers.current[id]);
+      delete deleteTimers.current[id];
+    }
+    setPendingDeletes(prev => prev.filter(p => p !== id));
+  };
+
+  const activeRecipes = React.useMemo(() => {
+    return recipes.filter(r => !pendingDeletes.includes(r.id));
+  }, [recipes, pendingDeletes]);
 
   const allFilters = React.useMemo(() => {
     const types = new Set<string>();
-    recipes.forEach(r => types.add(r.meal_type));
+    activeRecipes.forEach(r => types.add(r.meal_type));
     return ['All Recipes', ...Array.from(types).sort().map(t => MEAL_TYPE_LABELS[t] || t)];
-  }, [recipes]);
+  }, [activeRecipes]);
 
   const filteredRecipes = React.useMemo(() => {
     if (selectedFilter === 'All Recipes') return recipes;
-    // Reverse-lookup meal_type from label
     const mealType = Object.entries(MEAL_TYPE_LABELS).find(([, label]) => label === selectedFilter)?.[0];
     if (!mealType) return recipes;
     return recipes.filter(r => r.meal_type === mealType);
   }, [recipes, selectedFilter]);
 
-  const heroRecipe = recipes[0];
+  const heroRecipe = activeRecipes[0];
 
   if (!heroRecipe) {
     return (
@@ -298,7 +307,7 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
             </div>
           </div>
           <div className="md:col-span-4 grid grid-rows-2 gap-6">
-            {recipes.slice(1, 3).map((item) => (
+            {activeRecipes.slice(1, 3).map((item) => (
               <div 
                 key={item.id} 
                 onClick={() => onRecipeClick(item.id)}
@@ -335,9 +344,25 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {filteredRecipes.map(recipe => (
-          <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} onEdit={onEditRecipe} />
-        ))}
+        {filteredRecipes.map(recipe => {
+          if (pendingDeletes.includes(recipe.id)) {
+            return (
+              <div key={recipe.id} className="bg-surface-container-low rounded-lg p-6 flex flex-col sm:flex-row items-center justify-between shadow-sm animate-pulse h-32 gap-4">
+                <div>
+                  <span className="text-on-surface-variant font-bold block mb-1 hover:line-through transition-all decoration-error underline-offset-2">Recipe deleted</span>
+                  <span className="text-sm text-on-surface-variant/80">{recipe.name} will be permanently removed in 5 seconds.</span>
+                </div>
+                <button 
+                  onClick={() => undoDelete(recipe.id)} 
+                  className="bg-primary/10 text-primary font-bold px-6 py-2 rounded-full hover:bg-primary/20 transition-colors whitespace-nowrap"
+                >
+                  UNDO
+                </button>
+              </div>
+            );
+          }
+          return <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} onEdit={onEditRecipe} onDelete={initiateDelete} />
+        })}
       </section>
     </motion.div>
   );

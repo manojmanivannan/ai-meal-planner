@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Zap } from 'lucide-react';
+import { X, Search, Zap, CheckCircle } from 'lucide-react';
 import { Recipe } from '../types';
 import { MEAL_TYPE_LABELS } from '../constants';
 import { fetchRecipes } from '../api';
@@ -10,9 +10,10 @@ interface RecipePickerProps {
   onClose: () => void;
   onSelect: (recipeId: number) => void;
   title: string;
+  selectedRecipeId?: number;
 }
 
-export const RecipePicker: React.FC<RecipePickerProps> = ({ isOpen, onClose, onSelect, title }) => {
+export const RecipePicker: React.FC<RecipePickerProps> = ({ isOpen, onClose, onSelect, title, selectedRecipeId }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [recipes, setRecipes] = React.useState<Recipe[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -91,21 +92,35 @@ export const RecipePicker: React.FC<RecipePickerProps> = ({ isOpen, onClose, onS
                     onSelect(recipe.id);
                     onClose();
                   }}
-                  className="w-full flex items-center gap-4 p-3 rounded-2xl bg-surface-lowest border border-surface-container hover:border-primary/30 hover:bg-primary/5 transition-all group text-left"
+                  className={`w-full flex items-center gap-4 p-3 rounded-2xl border transition-all group text-left ${
+                    recipe.id === selectedRecipeId 
+                      ? 'bg-primary/10 border-primary text-primary'
+                      : 'bg-surface-lowest border-surface-container hover:border-primary/30 hover:bg-primary/5'
+                  }`}
                 >
-                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-primary/10 to-primary-container/20 flex items-center justify-center">
-                    <span className="text-3xl opacity-50">{recipe.is_vegetarian ? '🥗' : '🍽️'}</span>
+                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-primary/10 to-primary-container/20 flex items-center justify-center relative">
+                    {recipe.image_url ? (
+                      <img src={recipe.image_url} alt={recipe.name} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-3xl opacity-50">{recipe.is_vegetarian ? '🥗' : '🍽️'}</span>
+                    )}
                   </div>
                   <div className="flex-grow">
-                    <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">{recipe.name}</h3>
-                    <div className="flex items-center gap-3 text-xs text-on-surface-variant font-medium">
+                    <h3 className={`font-bold text-lg mb-1 transition-colors ${recipe.id === selectedRecipeId ? 'text-primary' : 'group-hover:text-primary'}`}>{recipe.name}</h3>
+                    <div className="flex items-center gap-3 text-xs font-medium opacity-80">
                       <span>{MEAL_TYPE_LABELS[recipe.meal_type] || recipe.meal_type}</span>
                       <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> {Math.round(recipe.energy)} kcal</span>
                     </div>
                   </div>
-                  <div className="bg-primary/10 text-primary px-4 py-2 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    Select
-                  </div>
+                  {recipe.id === selectedRecipeId ? (
+                    <div className="bg-primary text-on-primary px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4" /> Current
+                    </div>
+                  ) : (
+                    <div className="bg-primary/10 text-primary px-4 py-2 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                      Select
+                    </div>
+                  )}
                 </button>
               ))}
               {!loading && filteredRecipes.length === 0 && (

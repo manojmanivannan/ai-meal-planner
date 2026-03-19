@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Zap, Clock } from 'lucide-react';
+import { Edit2, Zap, Clock, Trash2 } from 'lucide-react';
 import { Recipe } from '../types';
 import { MEAL_TYPE_LABELS } from '../constants';
 
@@ -8,13 +8,20 @@ interface RecipeCardProps {
   variant?: 'compact' | 'full' | 'hero' | 'planner';
   onClick?: (id: number) => void;
   onEdit?: (id: number) => void;
+  onDelete?: (id: number) => void;
+  onSwap?: (id: number) => void;
+  onRemoveFromPlan?: (id: number) => void;
 }
 
-export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full', onClick, onEdit }) => {
+export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full', onClick, onEdit, onDelete, onSwap, onRemoveFromPlan }) => {
   const handleClick = () => onClick?.(recipe.id);
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     onEdit?.(recipe.id);
+  };
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.(recipe.id);
   };
 
   const mealLabel = MEAL_TYPE_LABELS[recipe.meal_type] || recipe.meal_type;
@@ -96,24 +103,24 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
             <Clock className="w-3 h-3" /> {recipe.prep_time_minutes || 15}m
           </div>
         </div>
-        <div className="p-6">
-          <h4 className="font-bold text-xl md:text-2xl mb-6 leading-tight text-center group-hover:text-primary transition-colors">{recipe.name}</h4>
-          <div className="flex justify-between items-center px-2 md:px-6">
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Cals</span>
-              <span className="text-lg font-extrabold text-on-surface">{Math.round(recipe.energy)}</span>
+        <div className="p-4 md:p-5">
+          <h4 className="font-bold text-base md:text-lg mb-4 leading-tight text-center group-hover:text-primary transition-colors">{recipe.name}</h4>
+          <div className="grid grid-cols-4 gap-1 px-1">
+            <div className="flex flex-col items-center text-center">
+              <span className="text-[8px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Cals</span>
+              <span className="text-sm font-extrabold text-on-surface truncate w-full">{Math.round(recipe.energy)}</span>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Prot</span>
-              <span className="text-lg font-extrabold text-on-surface">{Math.round(recipe.protein)}g</span>
+            <div className="flex flex-col items-center text-center">
+              <span className="text-[8px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Prot</span>
+              <span className="text-sm font-extrabold text-on-surface truncate w-full">{Math.round(recipe.protein)}g</span>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Carb</span>
-              <span className="text-lg font-extrabold text-on-surface">{Math.round(recipe.carbs)}g</span>
+            <div className="flex flex-col items-center text-center">
+              <span className="text-[8px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Carb</span>
+              <span className="text-sm font-extrabold text-on-surface truncate w-full">{Math.round(recipe.carbs)}g</span>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Fat</span>
-              <span className="text-lg font-extrabold text-on-surface">{Math.round(recipe.fat)}g</span>
+            <div className="flex flex-col items-center text-center">
+              <span className="text-[8px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">Fat</span>
+              <span className="text-sm font-extrabold text-on-surface truncate w-full">{Math.round(recipe.fat)}g</span>
             </div>
           </div>
         </div>
@@ -151,10 +158,15 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
           <span>Serves {recipe.serves}</span>
         </div>
       </div>
-      <div className="p-4 flex items-center justify-center">
+      <div className="p-4 flex items-center justify-center gap-2">
         <button className="p-2 text-on-surface-variant hover:text-primary transition-colors" onClick={handleEdit}>
           <Edit2 className="w-5 h-5" />
         </button>
+        {onDelete && (
+          <button className="p-2 text-on-surface-variant hover:text-error transition-colors" onClick={handleDelete} title="Delete Recipe">
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
       </div>
     </div>
   );

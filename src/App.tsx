@@ -163,6 +163,7 @@ function App() {
             recipes={recipes}
             onRecipeClick={handleRecipeClick}
             onEditRecipe={handleEditRecipe}
+            onDeleteRecipe={handleDeleteRecipe}
           />
         );
       case 'ingredients':
