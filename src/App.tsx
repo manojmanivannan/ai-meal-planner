@@ -1,173 +1,193 @@
-import { useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { TopBar, BottomNav } from './components/Navigation';
 import { PlannerScreen, RecipesScreen, IngredientsScreen } from './screens/MainScreens';
 import { EditIngredientScreen } from './screens/EditIngredientScreen';
 import { CreateRecipeScreen } from './screens/CreateRecipeScreen';
 import { RecipeDetailScreen } from './screens/RecipeDetailScreen';
-import { Ingredient, Recipe } from './types';
-import { INITIAL_INGREDIENTS, INITIAL_RECIPES } from './constants';
+import { Recipe, Ingredient } from './types';
+import { fetchIngredients, fetchRecipes, createIngredient, updateIngredient, deleteIngredient, createRecipe, updateRecipe, deleteRecipeApi } from './api';
 
-type ViewState = 'main' | 'edit-ingredient' | 'create-recipe' | 'edit-recipe' | 'recipe-detail';
+type ViewState =
+  | { type: 'main' }
+  | { type: 'edit-ingredient'; ingredientId: number | null }
+  | { type: 'create-recipe' }
+  | { type: 'edit-recipe'; recipeId: number }
+  | { type: 'recipe-detail'; recipeId: number };
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState('planner');
-  const [currentView, setCurrentView] = useState<ViewState>('main');
-  const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
-  const [recipes, setRecipes] = useState<Recipe[]>(INITIAL_RECIPES);
-  const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | undefined>();
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
+function App() {
+  const [activeTab, setActiveTab] = useState<'planner' | 'recipes' | 'ingredients'>('planner');
+  const [view, setView] = useState<ViewState>({ type: 'main' });
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleEditIngredient = (id: string) => {
-    const ing = ingredients.find(i => i.id === id);
-    setSelectedIngredient(ing);
-    setCurrentView('edit-ingredient');
-  };
-
-  const handleNewIngredient = () => {
-    setSelectedIngredient(undefined);
-    setCurrentView('edit-ingredient');
-  };
-
-  const handleSaveIngredient = (ing: Partial<Ingredient>) => {
-    if (selectedIngredient) {
-      setIngredients(ingredients.map(i => i.id === selectedIngredient.id ? { ...i, ...ing } as Ingredient : i));
-    } else {
-      const newIng: Ingredient = {
-        ...ing,
-        id: Math.random().toString(36).substr(2, 9),
-      } as Ingredient;
-      setIngredients([...ingredients, newIng]);
+  // Load data from API
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [ings, recs] = await Promise.all([
+        fetchIngredients({ limit: 1000 }),
+        fetchRecipes({ limit: 500 }),
+      ]);
+      setIngredients(ings);
+      setRecipes(recs);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    } finally {
+      setLoading(false);
     }
-    setCurrentView('main');
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Handlers
+  const handleSaveIngredient = async (data: Partial<Ingredient>, id?: number) => {
+    try {
+      if (id) {
+        await updateIngredient(id, data);
+      } else {
+        await createIngredient(data);
+      }
+      await loadData();
+      setView({ type: 'main' });
+    } catch (err) {
+      console.error('Failed to save ingredient:', err);
+    }
   };
 
-  const handleNewRecipe = () => {
-    setSelectedRecipe(undefined);
-    setCurrentView('create-recipe');
+  const handleDeleteIngredient = async (id: number) => {
+    try {
+      await deleteIngredient(id);
+      await loadData();
+      setView({ type: 'main' });
+    } catch (err) {
+      console.error('Failed to delete ingredient:', err);
+    }
   };
 
-  const handleEditRecipe = (id: string) => {
-    const recipe = recipes.find(r => r.id === id);
+  const handleSaveRecipe = async (data: Partial<Recipe>, id?: number) => {
+    try {
+      if (id) {
+        await updateRecipe(id, data);
+      } else {
+        await createRecipe(data);
+      }
+      await loadData();
+      setView({ type: 'main' });
+    } catch (err) {
+      console.error('Failed to save recipe:', err);
+    }
+  };
+
+  const handleDeleteRecipe = async (id: number) => {
+    try {
+      await deleteRecipeApi(id);
+      await loadData();
+      setView({ type: 'main' });
+    } catch (err) {
+      console.error('Failed to delete recipe:', err);
+    }
+  };
+
+  // Navigation handlers
+  const handleRecipeClick = (id: number) => setView({ type: 'recipe-detail', recipeId: id });
+  const handleEditRecipe = (id: number) => setView({ type: 'edit-recipe', recipeId: id });
+  const handleEditIngredient = (id: number) => setView({ type: 'edit-ingredient', ingredientId: id });
+  const handleNewIngredient = () => setView({ type: 'edit-ingredient', ingredientId: null });
+  const handleBack = () => setView({ type: 'main' });
+
+  // Render sub-views
+  if (view.type === 'edit-ingredient') {
+    const ingredient = view.ingredientId 
+      ? ingredients.find(i => i.id === view.ingredientId) || null 
+      : null;
+    return (
+      <EditIngredientScreen
+        ingredient={ingredient}
+        onBack={handleBack}
+        onSave={(data) => handleSaveIngredient(data, view.ingredientId ?? undefined)}
+        onDelete={view.ingredientId ? () => handleDeleteIngredient(view.ingredientId!) : undefined}
+      />
+    );
+  }
+
+  if (view.type === 'create-recipe' || view.type === 'edit-recipe') {
+    const recipe = view.type === 'edit-recipe' 
+      ? recipes.find(r => r.id === view.recipeId) || null 
+      : null;
+    return (
+      <CreateRecipeScreen
+        recipe={recipe}
+        ingredients={ingredients}
+        onBack={handleBack}
+        onSave={(data) => handleSaveRecipe(data, view.type === 'edit-recipe' ? view.recipeId : undefined)}
+        onDelete={view.type === 'edit-recipe' ? () => handleDeleteRecipe(view.recipeId) : undefined}
+      />
+    );
+  }
+
+  if (view.type === 'recipe-detail') {
+    const recipe = recipes.find(r => r.id === view.recipeId);
     if (recipe) {
-      setSelectedRecipe(recipe);
-      setCurrentView('edit-recipe');
+      return (
+        <RecipeDetailScreen
+          recipe={recipe}
+          onBack={handleBack}
+          onEdit={() => handleEditRecipe(view.recipeId)}
+        />
+      );
     }
-  };
+  }
 
-  const handleSaveRecipe = (recipeData: Partial<Recipe>) => {
-    if (selectedRecipe) {
-      setRecipes(recipes.map(r => r.id === selectedRecipe.id ? { ...r, ...recipeData } as Recipe : r));
-    } else {
-      const newRecipe: Recipe = {
-        ...recipeData,
-        id: Math.random().toString(36).substr(2, 9),
-        tags: recipeData.tags || [],
-        ingredients: recipeData.ingredients || [],
-        instructions: recipeData.instructions || [],
-        image: recipeData.image || 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=800',
-        calories: recipeData.calories || 0,
-        protein: recipeData.protein || 0,
-        carbs: recipeData.carbs || 0,
-        fats: recipeData.fats || 0,
-      } as Recipe;
-      setRecipes([...recipes, newRecipe]);
+  // Main view
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-on-surface-variant font-medium">Loading your kitchen...</p>
+          </div>
+        </div>
+      );
     }
-    setCurrentView('main');
-  };
 
-  const handleDeleteRecipe = (id: string) => {
-    setRecipes(recipes.filter(r => r.id !== id));
-    setCurrentView('main');
-  };
-
-  const handleRecipeClick = (id: string) => {
-    const recipe = recipes.find(r => r.id === id);
-    if (recipe) {
-      setSelectedRecipe(recipe);
-      setCurrentView('recipe-detail');
-    }
-  };
-
-  const renderMainContent = () => {
     switch (activeTab) {
       case 'planner':
         return <PlannerScreen onRecipeClick={handleRecipeClick} />;
       case 'recipes':
-        return <RecipesScreen recipes={recipes} onRecipeClick={handleRecipeClick} onEditRecipe={handleEditRecipe} />;
+        return (
+          <RecipesScreen
+            recipes={recipes}
+            onRecipeClick={handleRecipeClick}
+            onEditRecipe={handleEditRecipe}
+          />
+        );
       case 'ingredients':
         return (
-          <div className="relative">
-            <IngredientsScreen ingredients={ingredients} onEditIngredient={handleEditIngredient} onNewIngredient={handleNewIngredient} />
-            {/* FAB for Ingredients */}
-            <button 
-              onClick={handleNewIngredient}
-              className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg md:hidden active:scale-90 transition-transform"
-            >
-              <span className="text-3xl font-bold">+</span>
-            </button>
-          </div>
+          <IngredientsScreen
+            ingredients={ingredients}
+            onEditIngredient={handleEditIngredient}
+            onNewIngredient={handleNewIngredient}
+          />
         );
-      default:
-        return <PlannerScreen />;
     }
   };
 
-  if (currentView === 'edit-ingredient') {
-    return (
-      <div className="min-h-screen bg-surface p-6">
-        <EditIngredientScreen 
-          ingredient={selectedIngredient} 
-          onBack={() => setCurrentView('main')} 
-          onSave={handleSaveIngredient}
-        />
-      </div>
-    );
-  }
-
-  if (currentView === 'create-recipe' || currentView === 'edit-recipe') {
-    return (
-      <div className="min-h-screen bg-surface p-6">
-        <CreateRecipeScreen 
-          recipe={selectedRecipe}
-          onBack={() => setCurrentView('main')} 
-          onSave={handleSaveRecipe}
-          onDelete={handleDeleteRecipe}
-          onAddNewIngredient={handleNewIngredient}
-        />
-      </div>
-    );
-  }
-
-  if (currentView === 'recipe-detail' && selectedRecipe) {
-    return (
-      <div className="min-h-screen bg-surface">
-        <RecipeDetailScreen 
-          recipe={selectedRecipe} 
-          onBack={() => setCurrentView('main')} 
-          onEdit={() => setCurrentView('edit-recipe')}
-          onDelete={handleDeleteRecipe}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-surface">
-      <TopBar />
-      <main className="max-w-7xl mx-auto px-6 pt-8 pb-32">
-        {renderMainContent()}
+      <TopBar
+        activeTab={activeTab}
+        onCreateRecipe={() => setView({ type: 'create-recipe' })}
+      />
+      <main className="max-w-7xl mx-auto px-6 pt-28 pb-28">
+        {renderContent()}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      {/* Global FAB for Recipes/Planner */}
-      {activeTab !== 'ingredients' && (
-        <button 
-          onClick={handleNewRecipe}
-          className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg md:hidden active:scale-90 transition-transform"
-        >
-          <span className="text-3xl font-bold">+</span>
-        </button>
-      )}
     </div>
   );
 }
+
+export default App;

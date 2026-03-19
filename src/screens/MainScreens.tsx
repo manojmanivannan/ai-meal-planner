@@ -2,111 +2,139 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { 
   Sunrise, Sun, Moon, Coffee, Plus, 
-  Search, Heart, ArrowRight, Sparkles, 
-  Clock, Edit2 
+  Search, UtensilsCrossed,
+  Clock
 } from 'lucide-react';
 import { RecipeCard } from '../components/RecipeCard';
-import { INITIAL_RECIPES, INITIAL_INGREDIENTS } from '../constants';
-import { Recipe, Ingredient } from '../types';
-
+import { Recipe, Ingredient, WeeklyPlanEntry } from '../types';
+import { MEAL_TYPE_LABELS } from '../constants';
+import { fetchWeeklyPlan, fetchRecipes, updateWeeklyPlan } from '../api';
 import { RecipePicker } from '../components/RecipePicker';
+import { IngredientCard } from '../components/IngredientCard';
 
 interface PlannerScreenProps {
-  onRecipeClick: (id: string) => void;
+  onRecipeClick: (id: number) => void;
 }
 
-type MealSlot = 'breakfast' | 'lunch' | 'snack' | 'dinner';
+type MealSlot = 'pre_breakfast' | 'breakfast' | 'lunch' | 'snack' | 'dinner';
 
 export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) => {
-  const [selectedDay, setSelectedDay] = React.useState('MON');
+  const [selectedDay, setSelectedDay] = React.useState('monday');
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
   const [activeSlot, setActiveSlot] = React.useState<{ day: string, slot: MealSlot } | null>(null);
+  const [weeklyPlan, setWeeklyPlan] = React.useState<WeeklyPlanEntry[]>([]);
+  const [allRecipes, setAllRecipes] = React.useState<Recipe[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const dayLabels: Record<string, string> = {
+    monday: 'MON', tuesday: 'TUE', wednesday: 'WED', thursday: 'THU',
+    friday: 'FRI', saturday: 'SAT', sunday: 'SUN',
+  };
 
-  // Initial state from mock data, but using recipe IDs or null
-  const [dayPlans, setDayPlans] = React.useState<Record<string, Record<MealSlot, string | null>>>(() => {
-    const initial: Record<string, Record<MealSlot, string | null>> = {};
-    days.forEach(day => {
-      initial[day] = {
-        breakfast: INITIAL_RECIPES[0].id,
-        lunch: INITIAL_RECIPES[1].id,
-        snack: null,
-        dinner: INITIAL_RECIPES[2].id
-      };
-    });
-    // Add some variety to mock data
-    initial['MON'].snack = INITIAL_RECIPES[0].id;
-    initial['TUE'].dinner = null;
-    initial['WED'].lunch = null;
-    return initial;
-  });
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        const [plan, recipes] = await Promise.all([
+          fetchWeeklyPlan(),
+          fetchRecipes({ limit: 500 }),
+        ]);
+        setWeeklyPlan(plan);
+        setAllRecipes(recipes);
+      } catch (err) {
+        console.error('Failed to load planner data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const currentPlan = dayPlans[selectedDay];
+  const mealSlots: MealSlot[] = ['breakfast', 'lunch', 'snack', 'dinner'];
+
+  const getRecipesForSlot = (day: string, slot: MealSlot): Recipe[] => {
+    const entry = weeklyPlan.find(e => e.day === day && e.meal_type === slot);
+    if (!entry) return [];
+    return entry.recipe_ids
+      .map(id => allRecipes.find(r => r.id === id))
+      .filter(Boolean) as Recipe[];
+  };
 
   const handleAddRecipe = (slot: MealSlot) => {
     setActiveSlot({ day: selectedDay, slot });
     setIsPickerOpen(true);
   };
 
-  const handleRemoveRecipe = (slot: MealSlot) => {
-    setDayPlans(prev => ({
-      ...prev,
-      [selectedDay]: {
-        ...prev[selectedDay],
-        [slot]: null
-      }
-    }));
-  };
-
-  const handleSelectRecipe = (recipeId: string) => {
-    if (activeSlot) {
-      setDayPlans(prev => ({
-        ...prev,
-        [activeSlot.day]: {
-          ...prev[activeSlot.day],
-          [activeSlot.slot]: recipeId
-        }
-      }));
+  const handleRemoveRecipe = async (slot: MealSlot, recipeId: number) => {
+    const entry = weeklyPlan.find(e => e.day === selectedDay && e.meal_type === slot);
+    if (!entry) return;
+    const newIds = entry.recipe_ids.filter(id => id !== recipeId);
+    try {
+      const updated = await updateWeeklyPlan(entry.id, newIds);
+      setWeeklyPlan(prev => prev.map(e => e.id === entry.id ? updated : e));
+    } catch (err) {
+      console.error('Failed to remove recipe:', err);
     }
   };
 
-  const renderMealSlot = (slot: MealSlot, icon: React.ReactNode, title: string) => {
-    const recipeId = currentPlan[slot];
-    const recipe = recipeId ? INITIAL_RECIPES.find(r => r.id === recipeId) : null;
+  const handleSelectRecipe = async (recipeId: number) => {
+    if (!activeSlot) return;
+    const entry = weeklyPlan.find(e => e.day === activeSlot.day && e.meal_type === activeSlot.slot);
+    if (!entry) return;
+    const newIds = [...entry.recipe_ids, recipeId];
+    try {
+      const updated = await updateWeeklyPlan(entry.id, newIds);
+      setWeeklyPlan(prev => prev.map(e => e.id === entry.id ? updated : e));
+    } catch (err) {
+      console.error('Failed to add recipe:', err);
+    }
+  };
+
+  const mealIcons: Record<MealSlot, React.ReactNode> = {
+    pre_breakfast: <Coffee className="w-5 h-5" />,
+    breakfast: <Sunrise className="w-5 h-5" />,
+    lunch: <Sun className="w-5 h-5" />,
+    snack: <Coffee className="w-5 h-5" />,
+    dinner: <Moon className="w-5 h-5" />,
+  };
+
+  const renderMealSlot = (slot: MealSlot) => {
+    const recipes = getRecipesForSlot(selectedDay, slot);
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" key={slot}>
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
-            <span className="text-primary">{icon}</span>
-            <h3 className="text-lg font-bold">{title}</h3>
+            <span className="text-primary">{mealIcons[slot]}</span>
+            <h3 className="text-lg font-bold">{MEAL_TYPE_LABELS[slot] || slot}</h3>
           </div>
-          {recipe && (
-            <div className="flex gap-2">
-              <button 
-                onClick={() => handleAddRecipe(slot)}
-                className="text-[10px] font-bold text-primary uppercase tracking-wider hover:underline"
-              >
-                Change
-              </button>
-              <span className="text-on-surface-variant/20">|</span>
-              <button 
-                onClick={() => handleRemoveRecipe(slot)}
-                className="text-[10px] font-bold text-error uppercase tracking-wider hover:underline"
-              >
-                Remove
-              </button>
-            </div>
-          )}
         </div>
         
-        {recipe ? (
-          <RecipeCard 
-            recipe={recipe} 
-            variant="planner" 
-            onClick={onRecipeClick}
-          />
+        {recipes.length > 0 ? (
+          <div className="space-y-3">
+            {recipes.map(recipe => (
+              <div key={recipe.id} className="relative">
+                <RecipeCard 
+                  recipe={recipe} 
+                  variant="planner" 
+                  onClick={onRecipeClick}
+                />
+                <button 
+                  onClick={() => handleRemoveRecipe(slot, recipe.id)}
+                  className="absolute top-3 right-3 text-[10px] font-bold text-error uppercase tracking-wider hover:underline bg-surface/80 backdrop-blur-sm px-3 py-1 rounded-full"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button 
+              onClick={() => handleAddRecipe(slot)}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-surface-container-high bg-surface-container-low/30 flex items-center justify-center gap-2 group hover:bg-surface-container-low hover:border-primary/30 transition-all"
+            >
+              <Plus className="w-4 h-4 text-on-surface-variant group-hover:text-primary" />
+              <span className="text-sm font-bold text-on-surface-variant group-hover:text-primary">Add Another</span>
+            </button>
+          </div>
         ) : (
           <button 
             onClick={() => handleAddRecipe(slot)}
@@ -115,12 +143,20 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
             <div className="w-12 h-12 rounded-full bg-surface-lowest flex items-center justify-center text-on-surface-variant group-hover:text-primary group-hover:scale-110 transition-all shadow-sm">
               <Plus className="w-6 h-6" />
             </div>
-            <span className="text-sm font-bold text-on-surface-variant group-hover:text-primary">Add {title}</span>
+            <span className="text-sm font-bold text-on-surface-variant group-hover:text-primary">Add {MEAL_TYPE_LABELS[slot] || slot}</span>
           </button>
         )}
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -130,7 +166,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
     >
       <div className="mb-10">
         <h2 className="text-4xl font-headline font-extrabold tracking-tight mb-2">Weekly Planner</h2>
-        <p className="text-on-surface-variant font-medium">Curate your nourishment for {selectedDay === 'MON' ? 'Monday' : selectedDay}.</p>
+        <p className="text-on-surface-variant font-medium">Curate your nourishment for {selectedDay}.</p>
       </div>
 
       {/* Date Picker */}
@@ -146,7 +182,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
                     : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
-                <span className={`text-sm font-bold ${selectedDay === day ? 'opacity-100' : 'opacity-60'}`}>{day}</span>
+                <span className={`text-sm font-bold ${selectedDay === day ? 'opacity-100' : 'opacity-60'}`}>{dayLabels[day]}</span>
                 {selectedDay === day && <div className="mt-2 w-1.5 h-1.5 bg-tertiary-fixed rounded-full" />}
               </button>
             </div>
@@ -156,17 +192,14 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
 
       {/* Meal Slots */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {renderMealSlot('breakfast', <Sunrise className="w-5 h-5" />, 'Breakfast')}
-        {renderMealSlot('lunch', <Sun className="w-5 h-5" />, 'Lunch')}
-        {renderMealSlot('snack', <Coffee className="w-5 h-5" />, 'Snack')}
-        {renderMealSlot('dinner', <Moon className="w-5 h-5" />, 'Dinner')}
+        {mealSlots.map(slot => renderMealSlot(slot))}
       </div>
 
       <RecipePicker 
         isOpen={isPickerOpen}
         onClose={() => setIsPickerOpen(false)}
         onSelect={handleSelectRecipe}
-        title={`Select ${activeSlot?.slot || 'Recipe'}`}
+        title={`Select ${activeSlot?.slot ? MEAL_TYPE_LABELS[activeSlot.slot] || activeSlot.slot : 'Recipe'}`}
       />
     </motion.div>
   );
@@ -174,26 +207,36 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
 
 interface RecipesScreenProps {
   recipes: Recipe[];
-  onRecipeClick: (id: string) => void;
-  onEditRecipe: (id: string) => void;
+  onRecipeClick: (id: number) => void;
+  onEditRecipe: (id: number) => void;
 }
 
 export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeClick, onEditRecipe }) => {
   const [selectedFilter, setSelectedFilter] = React.useState('All Recipes');
 
-  // Extract unique tags from all recipes
-  const allTags = React.useMemo(() => {
-    const tags = new Set<string>();
-    recipes.forEach(r => r.tags.forEach(t => tags.add(t)));
-    return ['All Recipes', ...Array.from(tags).sort()];
+  const allFilters = React.useMemo(() => {
+    const types = new Set<string>();
+    recipes.forEach(r => types.add(r.meal_type));
+    return ['All Recipes', ...Array.from(types).sort().map(t => MEAL_TYPE_LABELS[t] || t)];
   }, [recipes]);
 
   const filteredRecipes = React.useMemo(() => {
     if (selectedFilter === 'All Recipes') return recipes;
-    return recipes.filter(r => r.tags.includes(selectedFilter));
+    // Reverse-lookup meal_type from label
+    const mealType = Object.entries(MEAL_TYPE_LABELS).find(([, label]) => label === selectedFilter)?.[0];
+    if (!mealType) return recipes;
+    return recipes.filter(r => r.meal_type === mealType);
   }, [recipes, selectedFilter]);
 
-  const heroRecipe = recipes[0] || INITIAL_RECIPES[0];
+  const heroRecipe = recipes[0];
+
+  if (!heroRecipe) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <p className="text-on-surface-variant">No recipes found.</p>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -206,46 +249,42 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[500px]">
           <div 
             onClick={() => onRecipeClick(heroRecipe.id)}
-            className="md:col-span-8 group relative overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer"
+            className="md:col-span-8 group relative overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer min-h-[300px]"
           >
-            <img 
-              src={heroRecipe.image} 
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              alt="Hero"
-            />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary-container/30" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-0 p-8 w-full">
               <span className="inline-block px-4 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-xs font-bold mb-4 uppercase tracking-wider">EDITOR'S CHOICE</span>
-              <h3 className="text-white text-4xl font-extrabold mb-2">{heroRecipe.title}</h3>
-              <p className="text-white/80 max-w-md mb-6 leading-relaxed line-clamp-2">{heroRecipe.description}</p>
+              <h3 className="text-white text-4xl font-extrabold mb-2">{heroRecipe.name}</h3>
+              <p className="text-white/80 max-w-md mb-6 leading-relaxed line-clamp-2">{heroRecipe.meal_type} · {heroRecipe.is_vegetarian ? 'Vegetarian' : 'Non-veg'}</p>
               <div className="flex gap-6">
                 <div className="flex flex-col">
-                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Calories</span>
-                  <span className="text-white font-bold">{heroRecipe.calories} kcal</span>
+                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Energy</span>
+                  <span className="text-white font-bold">{Math.round(heroRecipe.energy)} kcal</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Protein</span>
-                  <span className="text-white font-bold">{heroRecipe.protein}g</span>
+                  <span className="text-white font-bold">{Math.round(heroRecipe.protein)}g</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Prep Time</span>
-                  <span className="text-white font-bold">{heroRecipe.prepTime} min</span>
+                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Serves</span>
+                  <span className="text-white font-bold">{heroRecipe.serves}</span>
                 </div>
               </div>
             </div>
           </div>
           <div className="md:col-span-4 grid grid-rows-2 gap-6">
-            {recipes.slice(1, 3).map((item, i) => (
+            {recipes.slice(1, 3).map((item) => (
               <div 
                 key={item.id} 
                 onClick={() => onRecipeClick(item.id)}
-                className="relative overflow-hidden rounded-lg bg-surface-container-lowest group cursor-pointer"
+                className="relative overflow-hidden rounded-lg bg-surface-container-lowest group cursor-pointer min-h-[140px]"
               >
-                <img src={item.image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={item.title} />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary-container/20" />
                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />
                 <div className="absolute inset-0 flex flex-col justify-end p-6">
-                  <h4 className="text-white text-xl font-bold">{item.title}</h4>
-                  <p className="text-white/80 text-sm line-clamp-1">{item.description}</p>
+                  <h4 className="text-white text-xl font-bold">{item.name}</h4>
+                  <p className="text-white/80 text-sm line-clamp-1">{MEAL_TYPE_LABELS[item.meal_type] || item.meal_type} · {Math.round(item.energy)} kcal</p>
                 </div>
               </div>
             ))}
@@ -254,7 +293,7 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
       </header>
 
       <section className="mb-10 flex gap-3 overflow-x-auto no-scrollbar pb-2">
-        {allTags.map((filter) => (
+        {allFilters.map((filter) => (
           <button 
             key={filter}
             onClick={() => setSelectedFilter(filter)}
@@ -278,11 +317,9 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
   );
 };
 
-import { IngredientCard } from '../components/IngredientCard';
-
 interface IngredientsScreenProps {
   ingredients: Ingredient[];
-  onEditIngredient: (id: string) => void;
+  onEditIngredient: (id: number) => void;
   onNewIngredient: () => void;
 }
 
@@ -334,7 +371,7 @@ export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ ingredient
         <div className="hidden md:grid grid-cols-12 px-8 py-4 bg-surface-container-high rounded-full text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
           <div className="col-span-4">Ingredient</div>
           <div className="col-span-2 text-center">Unit</div>
-          <div className="col-span-1 text-center">Cals</div>
+          <div className="col-span-1 text-center">Energy</div>
           <div className="col-span-1 text-center">Protein</div>
           <div className="col-span-1 text-center">Carbs</div>
           <div className="col-span-1 text-center">Fat</div>
@@ -345,11 +382,12 @@ export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ ingredient
         ))}
       </div>
 
-      <div className="mt-12 flex justify-center">
-        <button className="px-8 py-3 bg-surface-container text-on-surface-variant font-bold rounded-full hover:bg-surface-container-high transition-colors active:scale-95">
-          Load More Ingredients
-        </button>
-      </div>
+      {filteredIngredients.length === 0 && (
+        <div className="mt-12 text-center text-on-surface-variant">
+          <p className="text-lg font-medium">No ingredients found</p>
+          <p className="text-sm">Try adjusting your search query</p>
+        </div>
+      )}
     </motion.div>
   );
 };
