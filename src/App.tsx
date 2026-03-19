@@ -171,6 +171,7 @@ function App() {
             ingredients={ingredients}
             onEditIngredient={handleEditIngredient}
             onNewIngredient={handleNewIngredient}
+            onDeleteIngredient={handleDeleteIngredient}
           />
         );
     }

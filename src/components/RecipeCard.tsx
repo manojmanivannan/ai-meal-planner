@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Zap } from 'lucide-react';
+import { Edit2, Zap, Clock } from 'lucide-react';
 import { Recipe } from '../types';
 import { MEAL_TYPE_LABELS } from '../constants';
 
@@ -25,7 +25,9 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
         onClick={handleClick}
         className="relative bg-surface-lowest rounded-lg overflow-hidden flex flex-col md:flex-row shadow-sm hover:shadow-md transition-all cursor-pointer group"
       >
-        <div className="w-full md:w-1/2 h-48 md:h-auto bg-gradient-to-br from-primary/20 to-primary-container/30" />
+        <div className="w-full md:w-1/2 h-48 md:h-auto bg-gradient-to-br from-primary/20 to-primary-container/30 relative overflow-hidden">
+          {recipe.image_url && <img src={recipe.image_url} alt={recipe.name} className="absolute inset-0 w-full h-full object-cover" />}
+        </div>
         <div className="p-6 md:w-1/2 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-3">
             <span className="bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -61,8 +63,12 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
         onClick={handleClick}
         className="bg-surface-lowest rounded-lg p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all cursor-pointer"
       >
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary-container/30 flex items-center justify-center flex-shrink-0">
-          <span className="text-2xl">{recipe.is_vegetarian ? '🥗' : '🍽️'}</span>
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary-container/30 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+          {recipe.image_url ? (
+            <img src={recipe.image_url} alt={recipe.name} className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <span className="text-2xl">{recipe.is_vegetarian ? '🥗' : '🍽️'}</span>
+          )}
         </div>
         <div className="flex-grow">
           <h4 className="font-bold text-on-surface">{recipe.name}</h4>
@@ -76,34 +82,38 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
     return (
       <div 
         onClick={handleClick}
-        className="bg-surface-lowest rounded-xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all cursor-pointer group border border-surface-container"
+        className="bg-surface-lowest rounded-3xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all cursor-pointer group border border-surface-container pb-2"
       >
-        <div className="h-40 relative overflow-hidden bg-gradient-to-br from-primary/10 to-primary-container/20">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-5xl opacity-30">{recipe.is_vegetarian ? '🥗' : '🍽️'}</span>
-          </div>
-          <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-            <Zap className="w-3 h-3" /> {Math.round(recipe.energy)} kcal
+        <div className="h-48 relative overflow-hidden bg-gradient-to-br from-primary/10 to-primary-container/20">
+          {recipe.image_url ? (
+            <img src={recipe.image_url} alt={recipe.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-5xl opacity-30">{recipe.is_vegetarian ? '🥗' : '🍽️'}</span>
+            </div>
+          )}
+          <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 z-10 shadow-sm">
+            <Clock className="w-3 h-3" /> {recipe.prep_time_minutes || 15}m
           </div>
         </div>
-        <div className="p-5">
-          <h4 className="font-bold text-lg mb-3 leading-tight group-hover:text-primary transition-colors">{recipe.name}</h4>
-          <div className="grid grid-cols-4 gap-2">
-            <div className="text-center bg-surface-container-low rounded-lg py-2">
-              <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Energy</span>
-              <span className="text-sm font-bold">{Math.round(recipe.energy)}</span>
+        <div className="p-6">
+          <h4 className="font-bold text-xl md:text-2xl mb-6 leading-tight text-center group-hover:text-primary transition-colors">{recipe.name}</h4>
+          <div className="flex justify-between items-center px-2 md:px-6">
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Cals</span>
+              <span className="text-lg font-extrabold text-on-surface">{Math.round(recipe.energy)}</span>
             </div>
-            <div className="text-center bg-surface-container-low rounded-lg py-2">
-              <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Prot</span>
-              <span className="text-sm font-bold">{Math.round(recipe.protein)}g</span>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Prot</span>
+              <span className="text-lg font-extrabold text-on-surface">{Math.round(recipe.protein)}g</span>
             </div>
-            <div className="text-center bg-surface-container-low rounded-lg py-2">
-              <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Carb</span>
-              <span className="text-sm font-bold">{Math.round(recipe.carbs)}g</span>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Carb</span>
+              <span className="text-lg font-extrabold text-on-surface">{Math.round(recipe.carbs)}g</span>
             </div>
-            <div className="text-center bg-surface-container-low rounded-lg py-2">
-              <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Fat</span>
-              <span className="text-sm font-bold">{Math.round(recipe.fat)}g</span>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Fat</span>
+              <span className="text-lg font-extrabold text-on-surface">{Math.round(recipe.fat)}g</span>
             </div>
           </div>
         </div>
@@ -118,9 +128,13 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
       className="bg-surface-lowest rounded-lg overflow-hidden flex flex-col sm:flex-row shadow-sm hover:shadow-md transition-all group cursor-pointer"
     >
       <div className="w-full sm:w-40 h-32 relative overflow-hidden bg-gradient-to-br from-primary/10 to-primary-container/20">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-4xl opacity-30">{recipe.is_vegetarian ? '🥗' : '🍽️'}</span>
-        </div>
+        {recipe.image_url ? (
+          <img src={recipe.image_url} alt={recipe.name} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-4xl opacity-30">{recipe.is_vegetarian ? '🥗' : '🍽️'}</span>
+          </div>
+        )}
       </div>
       <div className="p-4 flex flex-col justify-center flex-grow">
         <div className="flex flex-wrap gap-2 mb-2">

@@ -78,6 +78,7 @@ class RecipeIngredientResponse(RecipeIngredientBase):
 
 class RecipeBase(BaseModel):
     name: str
+    prep_time_minutes: int = 15
     serves: int = 1
     instructions: Optional[str] = None
     meal_type: str = "lunch"
@@ -93,6 +94,7 @@ class RecipeBase(BaseModel):
     potassium_mg: float = 0.0
     sodium_mg: float = 0.0
     vitamin_c_mg: float = 0.0
+    image_url: Optional[str] = None
 
 
 class RecipeCreate(RecipeBase):
@@ -101,6 +103,7 @@ class RecipeCreate(RecipeBase):
 
 class RecipeUpdate(BaseModel):
     name: Optional[str] = None
+    prep_time_minutes: Optional[int] = None
     serves: Optional[int] = None
     instructions: Optional[str] = None
     meal_type: Optional[str] = None
@@ -116,6 +119,7 @@ class RecipeUpdate(BaseModel):
     potassium_mg: Optional[float] = None
     sodium_mg: Optional[float] = None
     vitamin_c_mg: Optional[float] = None
+    image_url: Optional[str] = None
     ingredients: Optional[list[RecipeIngredientBase]] = None
 
 

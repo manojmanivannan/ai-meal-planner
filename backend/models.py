@@ -49,6 +49,7 @@ class Recipe(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(500), nullable=False, index=True)
+    prep_time_minutes = Column(Integer, default=15)
     serves = Column(Integer, default=1)
     instructions = Column(Text, nullable=True)
     meal_type = Column(String(50), nullable=False, default="lunch")
@@ -64,6 +65,7 @@ class Recipe(Base):
     potassium_mg = Column(Float, default=0.0)
     sodium_mg = Column(Float, default=0.0)
     vitamin_c_mg = Column(Float, default=0.0)
+    image_url = Column(String(1000), nullable=True)
 
     ingredients = relationship(
         "RecipeIngredient", back_populates="recipe", lazy="selectin", cascade="all, delete-orphan"

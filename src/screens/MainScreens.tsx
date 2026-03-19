@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { 
   Sunrise, Sun, Moon, Coffee, Plus, 
   Search, UtensilsCrossed,
-  Clock
+  Clock, Edit2, Trash2
 } from 'lucide-react';
 import { RecipeCard } from '../components/RecipeCard';
 import { Recipe, Ingredient, WeeklyPlanEntry } from '../types';
@@ -21,7 +21,7 @@ type MealSlot = 'pre_breakfast' | 'breakfast' | 'lunch' | 'snack' | 'dinner';
 export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) => {
   const [selectedDay, setSelectedDay] = React.useState('monday');
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
-  const [activeSlot, setActiveSlot] = React.useState<{ day: string, slot: MealSlot } | null>(null);
+  const [activeSlot, setActiveSlot] = React.useState<{ day: string, slot: MealSlot, intent?: 'add' | 'replace', oldRecipeId?: number } | null>(null);
   const [weeklyPlan, setWeeklyPlan] = React.useState<WeeklyPlanEntry[]>([]);
   const [allRecipes, setAllRecipes] = React.useState<Recipe[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -53,7 +53,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
   const mealSlots: MealSlot[] = ['breakfast', 'lunch', 'snack', 'dinner'];
 
   const getRecipesForSlot = (day: string, slot: MealSlot): Recipe[] => {
-    const entry = weeklyPlan.find(e => e.day === day && e.meal_type === slot);
+    const entry = weeklyPlan.find(e => e.day.toLowerCase() === day.toLowerCase() && e.meal_type.toLowerCase() === slot.toLowerCase());
     if (!entry) return [];
     return entry.recipe_ids
       .map(id => allRecipes.find(r => r.id === id))
@@ -61,12 +61,17 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
   };
 
   const handleAddRecipe = (slot: MealSlot) => {
-    setActiveSlot({ day: selectedDay, slot });
+    setActiveSlot({ day: selectedDay, slot, intent: 'add' });
+    setIsPickerOpen(true);
+  };
+
+  const handleChangeRecipe = (slot: MealSlot, oldRecipeId: number) => {
+    setActiveSlot({ day: selectedDay, slot, intent: 'replace', oldRecipeId });
     setIsPickerOpen(true);
   };
 
   const handleRemoveRecipe = async (slot: MealSlot, recipeId: number) => {
-    const entry = weeklyPlan.find(e => e.day === selectedDay && e.meal_type === slot);
+    const entry = weeklyPlan.find(e => e.day.toLowerCase() === selectedDay.toLowerCase() && e.meal_type.toLowerCase() === slot.toLowerCase());
     if (!entry) return;
     const newIds = entry.recipe_ids.filter(id => id !== recipeId);
     try {
@@ -79,9 +84,16 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
 
   const handleSelectRecipe = async (recipeId: number) => {
     if (!activeSlot) return;
-    const entry = weeklyPlan.find(e => e.day === activeSlot.day && e.meal_type === activeSlot.slot);
+    const entry = weeklyPlan.find(e => e.day.toLowerCase() === activeSlot.day.toLowerCase() && e.meal_type.toLowerCase() === activeSlot.slot.toLowerCase());
     if (!entry) return;
-    const newIds = [...entry.recipe_ids, recipeId];
+
+    let newIds = [...entry.recipe_ids];
+    if (activeSlot.intent === 'replace' && activeSlot.oldRecipeId) {
+      newIds = newIds.map(id => id === activeSlot.oldRecipeId ? recipeId : id);
+    } else {
+      newIds.push(recipeId);
+    }
+
     try {
       const updated = await updateWeeklyPlan(entry.id, newIds);
       setWeeklyPlan(prev => prev.map(e => e.id === entry.id ? updated : e));
@@ -103,29 +115,39 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({ onRecipeClick }) =
 
     return (
       <div className="space-y-4" key={slot}>
-        <div className="flex items-center justify-between px-2">
+        <div className="flex items-center justify-between px-2 mb-2">
           <div className="flex items-center gap-3">
             <span className="text-primary">{mealIcons[slot]}</span>
-            <h3 className="text-lg font-bold">{MEAL_TYPE_LABELS[slot] || slot}</h3>
+            <h3 className="text-xl font-bold">{MEAL_TYPE_LABELS[slot] || slot}</h3>
           </div>
+          {recipes.length > 0 && (
+            <div className="flex items-center gap-3 text-xs font-bold tracking-widest text-on-surface-variant">
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleChangeRecipe(slot, recipes[0].id); }}
+                className="hover:text-primary transition-colors cursor-pointer uppercase py-2"
+              >
+                Change
+              </button>
+              <div className="w-[2px] h-3 bg-outline-variant/30 rounded-full" />
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleRemoveRecipe(slot, recipes[0].id); }}
+                className="hover:text-error transition-colors cursor-pointer uppercase py-2"
+              >
+                Remove
+              </button>
+            </div>
+          )}
         </div>
         
         {recipes.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {recipes.map(recipe => (
-              <div key={recipe.id} className="relative">
-                <RecipeCard 
-                  recipe={recipe} 
-                  variant="planner" 
-                  onClick={onRecipeClick}
-                />
-                <button 
-                  onClick={() => handleRemoveRecipe(slot, recipe.id)}
-                  className="absolute top-3 right-3 text-[10px] font-bold text-error uppercase tracking-wider hover:underline bg-surface/80 backdrop-blur-sm px-3 py-1 rounded-full"
-                >
-                  Remove
-                </button>
-              </div>
+              <RecipeCard 
+                key={recipe.id}
+                recipe={recipe} 
+                variant="planner" 
+                onClick={onRecipeClick}
+              />
             ))}
             <button 
               onClick={() => handleAddRecipe(slot)}
@@ -251,7 +273,9 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
             onClick={() => onRecipeClick(heroRecipe.id)}
             className="md:col-span-8 group relative overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer min-h-[300px]"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary-container/30" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary-container/30">
+              {heroRecipe.image_url && <img src={heroRecipe.image_url} alt={heroRecipe.name} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" />}
+            </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-0 p-8 w-full">
               <span className="inline-block px-4 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-xs font-bold mb-4 uppercase tracking-wider">EDITOR'S CHOICE</span>
@@ -280,7 +304,9 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
                 onClick={() => onRecipeClick(item.id)}
                 className="relative overflow-hidden rounded-lg bg-surface-container-lowest group cursor-pointer min-h-[140px]"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary-container/20" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary-container/20">
+                  {item.image_url && <img src={item.image_url} alt={item.name} className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" />}
+                </div>
                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />
                 <div className="absolute inset-0 flex flex-col justify-end p-6">
                   <h4 className="text-white text-xl font-bold">{item.name}</h4>
@@ -321,9 +347,10 @@ interface IngredientsScreenProps {
   ingredients: Ingredient[];
   onEditIngredient: (id: number) => void;
   onNewIngredient: () => void;
+  onDeleteIngredient: (id: number) => void;
 }
 
-export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ ingredients, onEditIngredient, onNewIngredient }) => {
+export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ ingredients, onEditIngredient, onNewIngredient, onDeleteIngredient }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
 
   const filteredIngredients = React.useMemo(() => {
@@ -378,7 +405,7 @@ export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ ingredient
           <div className="col-span-2 text-right">Actions</div>
         </div>
         {filteredIngredients.map(ing => (
-          <IngredientCard key={ing.id} ingredient={ing} onEdit={onEditIngredient} />
+          <IngredientCard key={ing.id} ingredient={ing} onEdit={onEditIngredient} onDelete={onDeleteIngredient} />
         ))}
       </div>
 

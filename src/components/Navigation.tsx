@@ -1,7 +1,12 @@
 import React from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Plus } from 'lucide-react';
 
-export const TopBar: React.FC = () => {
+interface TopBarProps {
+  activeTab?: string;
+  onCreateRecipe?: () => void;
+}
+
+export const TopBar: React.FC<TopBarProps> = ({ activeTab, onCreateRecipe }) => {
   return (
     <header className="bg-surface sticky top-0 z-40 border-b border-surface-container/50">
       <div className="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
@@ -15,9 +20,16 @@ export const TopBar: React.FC = () => {
           </div>
           <h1 className="text-2xl font-extrabold text-gradient tracking-tight">Kitchen Table</h1>
         </div>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors duration-200">
-          <Settings className="w-6 h-6 text-on-surface-variant" />
-        </button>
+        <div className="flex items-center gap-2">
+          {activeTab === 'recipes' && onCreateRecipe && (
+            <button aria-label="Create Recipe" onClick={onCreateRecipe} className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-on-primary hover:scale-105 transition-all shadow-sm">
+              <Plus className="w-5 h-5" />
+            </button>
+          )}
+          <button aria-label="Settings" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors duration-200">
+            <Settings className="w-6 h-6 text-on-surface-variant" />
+          </button>
+        </div>
       </div>
     </header>
   );

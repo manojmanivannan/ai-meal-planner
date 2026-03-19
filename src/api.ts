@@ -115,6 +115,18 @@ export async function deleteRecipeApi(id: number): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete recipe');
 }
 
+export const uploadImage = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${API_BASE}/api/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) throw new Error('Failed to upload image');
+  const data = await response.json();
+  return data.url;
+};
+
 // ── Weekly Plan ────────────────────────────────────────────────────────────────
 
 export async function fetchWeeklyPlan(): Promise<WeeklyPlanEntry[]> {

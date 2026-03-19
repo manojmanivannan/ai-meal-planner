@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { X, Users, PlusCircle, Trash2, CheckCircle, BarChart3, Leaf } from 'lucide-react';
+import { X, Users, PlusCircle, Trash2, CheckCircle, BarChart3, Leaf, Image as ImageIcon, Upload, Clock } from 'lucide-react';
 import { Recipe, Ingredient, RecipeIngredient } from '../types';
+import { uploadImage } from '../api';
 import { IngredientPicker } from '../components/IngredientPicker';
 import { MEAL_TYPE_LABELS } from '../constants';
 
@@ -22,6 +23,7 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
 }) => {
   const [name, setName] = React.useState(recipe?.name || '');
   const [serves, setServes] = React.useState(recipe?.serves || 2);
+  const [prepTimeMinutes, setPrepTimeMinutes] = React.useState(recipe?.prep_time_minutes || 15);
   const [mealType, setMealType] = React.useState(recipe?.meal_type || 'lunch');
   const [isVegetarian, setIsVegetarian] = React.useState(recipe?.is_vegetarian || false);
   const [recipeIngredients, setRecipeIngredients] = React.useState<Array<{
@@ -38,7 +40,10 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
     })) || []
   );
   const [instructionText, setInstructionText] = React.useState(recipe?.instructions || '');
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = React.useState<string | null>(recipe?.image_url || null);
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
+  const [isUploading, setIsUploading] = React.useState(false);
 
   const handleSelectIngredient = (ing: Ingredient) => {
     setRecipeIngredients([...recipeIngredients, { 
@@ -53,13 +58,34 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
     setRecipeIngredients(recipeIngredients.filter((_, i) => i !== index));
   };
 
-  const handleSave = () => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSave = async () => {
+    setIsUploading(true);
+    let finalImageUrl = recipe?.image_url;
+    if (imageFile) {
+        try {
+            finalImageUrl = await uploadImage(imageFile);
+        } catch (err) {
+            console.error("Failed to upload image", err);
+        }
+    }
+    setIsUploading(false);
+
     onSave({
       name,
       serves,
+      prep_time_minutes: prepTimeMinutes,
       meal_type: mealType as any,
       is_vegetarian: isVegetarian,
       instructions: instructionText,
+      image_url: finalImageUrl,
       ingredients: recipeIngredients.map(i => ({
         id: 0,
         ingredient_id: i.ingredient_id,
@@ -94,6 +120,23 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
         )}
       </div>
 
+      {/* Image Upload Hero */}
+      <section className="relative w-full h-64 md:h-80 bg-surface-container-low rounded-3xl overflow-hidden group border-2 border-dashed border-outline-variant/30 flex items-center justify-center transition-all hover:border-primary/50">
+        {imagePreviewUrl ? (
+          <img src={imagePreviewUrl} alt="Recipe preview" className="w-full h-full object-cover" />
+        ) : (
+          <div className="flex flex-col items-center gap-3 text-on-surface-variant group-hover:text-primary transition-colors">
+            <ImageIcon className="w-12 h-12" />
+            <p className="font-bold">Upload Recipe Image</p>
+            <p className="text-xs opacity-70">PNG, JPG up to 10MB</p>
+          </div>
+        )}
+        <label className="absolute inset-0 w-full h-full cursor-pointer bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+          <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          {imagePreviewUrl && <div className="opacity-0 group-hover:opacity-100 bg-surface text-on-surface px-6 py-3 rounded-full font-bold shadow-xl transition-all flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0"><Upload className="w-4 h-4"/> Change Image</div>}
+        </label>
+      </section>
+
       {/* Identity */}
       <section className="space-y-6">
         <input 
@@ -111,8 +154,18 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
               type="number" 
               value={serves} 
               onChange={(e) => setServes(parseInt(e.target.value) || 1)}
-              className="bg-transparent border-none p-0 w-8 focus:ring-0 font-bold"
+              className="bg-transparent border-none p-0 w-8 focus:ring-0 font-bold text-center"
             /> Servings
+          </div>
+
+          <div className="flex items-center gap-2 bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-full text-sm font-semibold">
+            <Clock className="w-4 h-4" /> 
+            <input 
+              type="number" 
+              value={prepTimeMinutes} 
+              onChange={(e) => setPrepTimeMinutes(parseInt(e.target.value) || 15)}
+              className="bg-transparent border-none p-0 w-10 focus:ring-0 font-bold text-center"
+            /> Min Prep
           </div>
           
           <select 
@@ -226,9 +279,10 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
           </button>
           <button 
             onClick={handleSave}
-            className="flex-[2] py-4 rounded-full gradient-primary text-on-primary font-bold shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+            disabled={isUploading}
+            className="flex-[2] py-4 rounded-full gradient-primary text-on-primary font-bold shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
           >
-            <CheckCircle className="w-5 h-5" /> {recipe ? 'Update Recipe' : 'Save Recipe'}
+            <CheckCircle className="w-5 h-5" /> {isUploading ? 'Uploading...' : (recipe ? 'Update Recipe' : 'Save Recipe')}
           </button>
         </div>
       </div>

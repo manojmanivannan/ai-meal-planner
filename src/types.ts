@@ -51,6 +51,7 @@ export interface Recipe {
   id: number;
   name: string;
   serves: number;
+  prep_time_minutes: number;
   instructions: string | null;
   meal_type: MealType;
   is_vegetarian: boolean;

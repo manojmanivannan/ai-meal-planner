@@ -4,9 +4,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+import os
+from fastapi.staticfiles import StaticFiles
 
 from .database import Base, async_session, engine
-from .routers import ingredients, recipes, weekly_plan
+from .routers import ingredients, recipes, weekly_plan, upload
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,6 +56,10 @@ app.add_middleware(
 app.include_router(ingredients.router)
 app.include_router(recipes.router)
 app.include_router(weekly_plan.router)
+app.include_router(upload.router, prefix="/api/upload")
+
+os.makedirs("/app/uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
 
 
 @app.get("/api/health")
