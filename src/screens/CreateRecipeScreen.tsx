@@ -1,73 +1,99 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { X, Camera, Timer, Users, Star, PlusCircle, Trash2, CheckCircle, BarChart3 } from 'lucide-react';
-import { Recipe, Ingredient } from '../types';
+import { X, Users, PlusCircle, Trash2, CheckCircle, BarChart3, Leaf, Image as ImageIcon, Upload, Clock } from 'lucide-react';
+import { Recipe, Ingredient, RecipeIngredient } from '../types';
+import { uploadImage } from '../api';
 import { IngredientPicker } from '../components/IngredientPicker';
-import { INITIAL_INGREDIENTS } from '../constants';
+import { MEAL_TYPE_LABELS } from '../constants';
 
 interface CreateRecipeScreenProps {
-  recipe?: Recipe;
+  recipe: Recipe | null;
+  ingredients: Ingredient[];
   onBack: () => void;
   onSave: (recipe: Partial<Recipe>) => void;
-  onDelete?: (id: string) => void;
-  onAddNewIngredient?: () => void;
+  onDelete?: () => void;
 }
 
 export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({ 
   recipe, 
+  ingredients: allIngredients,
   onBack, 
   onSave, 
   onDelete,
-  onAddNewIngredient 
 }) => {
-  const [title, setTitle] = React.useState(recipe?.title || '');
-  const [description, setDescription] = React.useState(recipe?.description || '');
-  const [prepTime, setPrepTime] = React.useState(recipe?.prepTime || 30);
-  const [servings, setServings] = React.useState(recipe?.servings || 2);
-  const [difficulty, setDifficulty] = React.useState(recipe?.difficulty || 'Intermediate');
-  const [ingredients, setIngredients] = React.useState(recipe?.ingredients || []);
-  const [instructions, setInstructions] = React.useState(recipe?.instructions || ['']);
-  const [tags, setTags] = React.useState<string[]>(recipe?.tags || []);
-  const [newTag, setNewTag] = React.useState('');
+  const [name, setName] = React.useState(recipe?.name || '');
+  const [serves, setServes] = React.useState(recipe?.serves || 2);
+  const [prepTimeMinutes, setPrepTimeMinutes] = React.useState(recipe?.prep_time_minutes || 15);
+  const [mealType, setMealType] = React.useState(recipe?.meal_type || 'lunch');
+  const [isVegetarian, setIsVegetarian] = React.useState(recipe?.is_vegetarian || false);
+  const [recipeIngredients, setRecipeIngredients] = React.useState<Array<{
+    ingredient_id: number | null;
+    name: string;
+    quantity: number;
+    serving_unit: string;
+  }>>(
+    recipe?.ingredients?.map(i => ({
+      ingredient_id: i.ingredient_id,
+      name: i.name,
+      quantity: i.quantity,
+      serving_unit: i.serving_unit,
+    })) || []
+  );
+  const [instructionText, setInstructionText] = React.useState(recipe?.instructions || '');
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = React.useState<string | null>(recipe?.image_url || null);
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
-
-  const handleAddTag = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newTag.trim()) {
-      if (!tags.includes(newTag.trim().toUpperCase())) {
-        setTags([...tags, newTag.trim().toUpperCase()]);
-      }
-      setNewTag('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
+  const [isUploading, setIsUploading] = React.useState(false);
 
   const handleSelectIngredient = (ing: Ingredient) => {
-    setIngredients([...ingredients, { 
-      ingredientId: ing.id, 
-      quantity: 1, 
-      unit: ing.baseUnit 
+    setRecipeIngredients([...recipeIngredients, { 
+      ingredient_id: ing.id, 
+      name: ing.name,
+      quantity: 100, 
+      serving_unit: ing.serving_unit 
     }]);
   };
 
   const handleRemoveIngredient = (index: number) => {
-    setIngredients(ingredients.filter((_, i) => i !== index));
+    setRecipeIngredients(recipeIngredients.filter((_, i) => i !== index));
   };
 
-  const handleAddStep = () => {
-    setInstructions([...instructions, '']);
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
+    }
   };
 
-  const handleRemoveStep = (index: number) => {
-    setInstructions(instructions.filter((_, i) => i !== index));
-  };
+  const handleSave = async () => {
+    setIsUploading(true);
+    let finalImageUrl = recipe?.image_url;
+    if (imageFile) {
+        try {
+            finalImageUrl = await uploadImage(imageFile);
+        } catch (err) {
+            console.error("Failed to upload image", err);
+        }
+    }
+    setIsUploading(false);
 
-  const handleUpdateStep = (index: number, value: string) => {
-    const newSteps = [...instructions];
-    newSteps[index] = value;
-    setInstructions(newSteps);
+    onSave({
+      name,
+      serves,
+      prep_time_minutes: prepTimeMinutes,
+      meal_type: mealType as any,
+      is_vegetarian: isVegetarian,
+      instructions: instructionText,
+      image_url: finalImageUrl,
+      ingredients: recipeIngredients.map(i => ({
+        id: 0,
+        ingredient_id: i.ingredient_id,
+        name: i.name,
+        quantity: i.quantity,
+        serving_unit: i.serving_unit,
+      })),
+    });
   };
 
   return (
@@ -86,11 +112,7 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
         </div>
         {recipe && onDelete && (
           <button 
-            onClick={() => {
-              if (confirm('Are you sure you want to delete this recipe?')) {
-                onDelete(recipe.id);
-              }
-            }}
+            onClick={onDelete}
             className="flex items-center gap-2 text-error font-bold text-sm hover:bg-error/10 px-4 py-2 rounded-full transition-colors"
           >
             <Trash2 className="w-4 h-4" /> Delete
@@ -98,90 +120,74 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
         )}
       </div>
 
-      {/* Hero Image Upload */}
-      <section className="relative group cursor-pointer">
-        <div className="w-full h-80 bg-surface-container-low rounded-lg overflow-hidden flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 transition-all hover:bg-surface-container-high">
-          {recipe?.image ? (
-            <img src={recipe.image} alt="Preview" className="w-full h-full object-cover" />
-          ) : (
-            <>
-              <div className="bg-surface-lowest p-6 rounded-full shadow-sm mb-4">
-                <Camera className="w-10 h-10 text-primary" />
-              </div>
-              <p className="font-bold text-on-surface">Upload Hero Image</p>
-              <p className="text-on-surface-variant text-sm mt-1">High-quality editorial shots work best</p>
-            </>
-          )}
-        </div>
+      {/* Image Upload Hero */}
+      <section className="relative w-full h-64 md:h-80 bg-surface-container-low rounded-3xl overflow-hidden group border-2 border-dashed border-outline-variant/30 flex items-center justify-center transition-all hover:border-primary/50">
+        {imagePreviewUrl ? (
+          <img src={imagePreviewUrl} alt="Recipe preview" className="w-full h-full object-cover" />
+        ) : (
+          <div className="flex flex-col items-center gap-3 text-on-surface-variant group-hover:text-primary transition-colors">
+            <ImageIcon className="w-12 h-12" />
+            <p className="font-bold">Upload Recipe Image</p>
+            <p className="text-xs opacity-70">PNG, JPG up to 10MB</p>
+          </div>
+        )}
+        <label className="absolute inset-0 w-full h-full cursor-pointer bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+          <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          {imagePreviewUrl && <div className="opacity-0 group-hover:opacity-100 bg-surface text-on-surface px-6 py-3 rounded-full font-bold shadow-xl transition-all flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0"><Upload className="w-4 h-4"/> Change Image</div>}
+        </label>
       </section>
 
       {/* Identity */}
       <section className="space-y-6">
         <input 
           className="w-full bg-surface-container-low border-none rounded-lg px-6 py-5 text-4xl font-extrabold tracking-tight focus:ring-2 focus:ring-primary/30 placeholder:text-on-surface-variant/40" 
-          placeholder="Recipe Title (e.g., Summer Harvest Salad)" 
+          placeholder="Recipe Name" 
           type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
         />
-        <textarea 
-          className="w-full bg-surface-container-low border-none rounded-lg px-6 py-4 text-lg font-medium focus:ring-2 focus:ring-primary/30 placeholder:text-on-surface-variant/40 resize-none" 
-          placeholder="Brief description of the recipe..." 
-          rows={2}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        
         <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2 bg-tertiary-fixed text-on-tertiary-fixed px-5 py-2 rounded-full text-sm font-semibold">
-            <Timer className="w-4 h-4" /> 
-            <input 
-              type="number" 
-              value={prepTime} 
-              onChange={(e) => setPrepTime(parseInt(e.target.value))}
-              className="bg-transparent border-none p-0 w-12 focus:ring-0 font-bold"
-            /> Mins
-          </div>
           <div className="flex items-center gap-2 bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-full text-sm font-semibold">
             <Users className="w-4 h-4" /> 
             <input 
               type="number" 
-              value={servings} 
-              onChange={(e) => setServings(parseInt(e.target.value))}
-              className="bg-transparent border-none p-0 w-8 focus:ring-0 font-bold"
+              value={serves} 
+              onChange={(e) => setServes(parseInt(e.target.value) || 1)}
+              className="bg-transparent border-none p-0 w-8 focus:ring-0 font-bold text-center"
             /> Servings
           </div>
-          <select 
-            value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value as any)}
-            className="bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-full text-sm font-semibold border-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="Easy">Easy</option>
-            <option value="Intermediate">Intermediate</option>
-            <option value="Advanced">Advanced</option>
-          </select>
-        </div>
 
-        {/* Tags Section */}
-        <div className="space-y-3">
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Tags</p>
-          <div className="flex flex-wrap gap-2">
-            {tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">
-                {tag}
-                <button onClick={() => handleRemoveTag(tag)} className="hover:text-error transition-colors">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
+          <div className="flex items-center gap-2 bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-full text-sm font-semibold">
+            <Clock className="w-4 h-4" /> 
             <input 
-              type="text"
-              placeholder="Add tag + Enter"
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyDown={handleAddTag}
-              className="bg-surface-container-low border-none rounded-full px-4 py-1 text-xs font-bold focus:ring-2 focus:ring-primary/30 min-w-[120px]"
-            />
+              type="number" 
+              value={prepTimeMinutes} 
+              onChange={(e) => setPrepTimeMinutes(parseInt(e.target.value) || 15)}
+              className="bg-transparent border-none p-0 w-10 focus:ring-0 font-bold text-center"
+            /> Min Prep
           </div>
+          
+          <select 
+            value={mealType}
+            onChange={(e) => setMealType(e.target.value)}
+            className="bg-tertiary-fixed text-on-tertiary-fixed px-5 py-2 rounded-full text-sm font-semibold border-none focus:ring-2 focus:ring-primary/30"
+          >
+            {Object.entries(MEAL_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => setIsVegetarian(!isVegetarian)}
+            className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all ${
+              isVegetarian 
+                ? 'bg-green-500 text-white' 
+                : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+            }`}
+          >
+            <Leaf className="w-4 h-4" /> {isVegetarian ? 'Vegetarian' : 'Non-Veg'}
+          </button>
         </div>
       </section>
 
@@ -190,39 +196,35 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
         <section className="md:col-span-7 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold tracking-tight">Ingredients</h2>
-            <span className="text-on-surface-variant text-sm font-semibold">{ingredients.length} Items</span>
+            <span className="text-on-surface-variant text-sm font-semibold">{recipeIngredients.length} Items</span>
           </div>
           <div className="space-y-3">
-            {ingredients.map((ing, i) => {
-              const ingredientDetails = INITIAL_INGREDIENTS.find(item => item.id === ing.ingredientId);
-              return (
-                <div key={i} className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl">
-                  <div className="w-8 h-8 rounded-full bg-surface-lowest flex items-center justify-center text-lg">
-                    {ingredientDetails?.icon || '🥗'}
-                  </div>
-                  <div className="flex-grow">
-                    <p className="font-bold text-sm">{ingredientDetails?.name || 'Unknown Ingredient'}</p>
-                    <p className="text-[10px] text-on-surface-variant uppercase font-medium">{ingredientDetails?.category}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="number" 
-                      value={ing.quantity}
-                      onChange={(e) => {
-                        const newIngs = [...ingredients];
-                        newIngs[i].quantity = parseFloat(e.target.value);
-                        setIngredients(newIngs);
-                      }}
-                      className="w-16 bg-surface-lowest border-none rounded-lg px-2 py-1 text-center font-bold text-sm"
-                    />
-                    <span className="text-xs font-bold text-on-surface-variant min-w-[40px]">{ing.unit}</span>
-                  </div>
-                  <button onClick={() => handleRemoveIngredient(i)} className="p-2 text-error hover:bg-error/10 rounded-full transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {recipeIngredients.map((ing, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl">
+                <div className="w-8 h-8 rounded-full bg-surface-lowest flex items-center justify-center text-lg">
+                  🥗
                 </div>
-              );
-            })}
+                <div className="flex-grow">
+                  <p className="font-bold text-sm">{ing.name}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    value={ing.quantity}
+                    onChange={(e) => {
+                      const newIngs = [...recipeIngredients];
+                      newIngs[i] = { ...newIngs[i], quantity: parseFloat(e.target.value) || 0 };
+                      setRecipeIngredients(newIngs);
+                    }}
+                    className="w-16 bg-surface-lowest border-none rounded-lg px-2 py-1 text-center font-bold text-sm"
+                  />
+                  <span className="text-xs font-bold text-on-surface-variant min-w-[40px]">{ing.serving_unit}</span>
+                </div>
+                <button onClick={() => handleRemoveIngredient(i)} className="p-2 text-error hover:bg-error/10 rounded-full transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
             <button 
               onClick={() => setIsPickerOpen(true)}
               className="w-full py-4 rounded-lg bg-surface-container-low border-2 border-dashed border-outline-variant/20 text-on-surface-variant font-bold flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors"
@@ -233,27 +235,13 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
         </section>
 
         <section className="md:col-span-5 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold tracking-tight">Instructions</h2>
-            <button onClick={handleAddStep} className="text-primary text-sm font-bold uppercase tracking-wider">Add Step</button>
-          </div>
-          <div className="space-y-6">
-            {instructions.map((step, i) => (
-              <div key={i} className="flex gap-4 group">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-sm">{i + 1}</div>
-                <div className="flex-grow space-y-2">
-                  <textarea 
-                    className="w-full bg-transparent border-none p-0 focus:ring-0 text-on-surface font-body leading-relaxed resize-none" 
-                    placeholder="Step description..." 
-                    rows={3}
-                    value={step}
-                    onChange={(e) => handleUpdateStep(i, e.target.value)}
-                  />
-                  <button onClick={() => handleRemoveStep(i)} className="text-error text-[10px] font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity">Remove Step</button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <h2 className="text-2xl font-bold tracking-tight">Instructions</h2>
+          <textarea 
+            className="w-full bg-surface-container-low border-none rounded-lg p-4 focus:ring-2 focus:ring-primary/30 text-on-surface font-body leading-relaxed resize-none min-h-[300px]" 
+            placeholder="Write cooking instructions here... Separate steps with new lines." 
+            value={instructionText}
+            onChange={(e) => setInstructionText(e.target.value)}
+          />
         </section>
       </div>
 
@@ -261,7 +249,6 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
         isOpen={isPickerOpen}
         onClose={() => setIsPickerOpen(false)}
         onSelect={handleSelectIngredient}
-        onAddNew={() => onAddNewIngredient?.()}
       />
 
       {/* Nutrition Summary */}
@@ -271,14 +258,14 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
-            { label: 'Calories', val: recipe?.calories || 0, unit: 'kcal' },
+            { label: 'Energy', val: recipe?.energy || 0, unit: 'kcal' },
             { label: 'Protein', val: recipe?.protein || 0, unit: 'g' },
             { label: 'Carbs', val: recipe?.carbs || 0, unit: 'g' },
-            { label: 'Fats', val: recipe?.fats || 0, unit: 'g' }
+            { label: 'Fat', val: recipe?.fat || 0, unit: 'g' }
           ].map(stat => (
             <div key={stat.label} className="text-center md:text-left">
               <p className="text-on-surface-variant text-[10px] font-bold mb-1 uppercase tracking-widest">{stat.label}</p>
-              <p className="text-3xl font-extrabold text-on-surface">{stat.val}<span className="text-lg font-medium text-on-surface-variant/40 ml-1">{stat.unit}</span></p>
+              <p className="text-3xl font-extrabold text-on-surface">{Math.round(stat.val)}<span className="text-lg font-medium text-on-surface-variant/40 ml-1">{stat.unit}</span></p>
             </div>
           ))}
         </div>
@@ -291,10 +278,11 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
             Cancel
           </button>
           <button 
-            onClick={() => onSave({ title, description, prepTime, servings, difficulty, ingredients, instructions, tags })}
-            className="flex-[2] py-4 rounded-full gradient-primary text-on-primary font-bold shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+            onClick={handleSave}
+            disabled={isUploading}
+            className="flex-[2] py-4 rounded-full gradient-primary text-on-primary font-bold shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
           >
-            <CheckCircle className="w-5 h-5" /> {recipe ? 'Update Recipe' : 'Save Recipe'}
+            <CheckCircle className="w-5 h-5" /> {isUploading ? 'Uploading...' : (recipe ? 'Update Recipe' : 'Save Recipe')}
           </button>
         </div>
       </div>
