@@ -1,77 +1,70 @@
 
-export type Category =
-  | 'vegetables'
-  | 'fruits'
-  | 'grains_and_cereals'
-  | 'pulses_and_legumes'
-  | 'dairy_and_alternatives'
-  | 'animal_products_meat_poultry_seafood'
-  | 'nuts_and_seeds'
-  | 'spices_and_herbs'
-  | 'oils_and_fats'
-  | 'condiments_and_sauces'
-  | 'beverages_and_infusions'
-  | 'sweeteners'
-  | 'salt_and_minerals'
-  | 'other_miscellaneous';
-
-export type MealType = 'pre_breakfast' | 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'sides';
+export type Category = 'Produce' | 'Dairy' | 'Protein' | 'Pantry' | 'Spices' | 'Grains' | 'Bakery';
 
 export interface Ingredient {
-  id: number;
+  id: string;
   name: string;
-  shelf_life: number;
-  available: boolean;
-  last_available: string | null;
-  serving_unit: string;
-  serving_size: number;
+  category: Category;
+  baseQuantity: number;
+  baseUnit: string;
+  calories: number;
   protein: number;
   carbs: number;
-  fat: number;
-  fiber: number;
-  energy: number;
-  iron_mg: number;
-  magnesium_mg: number;
-  calcium_mg: number;
-  potassium_mg: number;
-  sodium_mg: number;
-  vitamin_c_mg: number;
-  category: Category;
+  fats: number;
+  fiber?: number;
+  image?: string;
+  icon?: string;
 }
 
 export interface RecipeIngredient {
-  id: number;
-  ingredient_id: number | null;
-  name: string;
+  ingredientId: string;
   quantity: number;
-  serving_unit: string;
+  unit: string;
+  notes?: string;
 }
 
 export interface Recipe {
-  id: number;
-  name: string;
-  serves: number;
-  prep_time_minutes: number;
-  instructions: string | null;
-  meal_type: MealType;
-  is_vegetarian: boolean;
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  prepTime: number;
+  servings: number;
+  difficulty: 'Easy' | 'Intermediate' | 'Advanced';
+  tags: string[];
+  ingredients: RecipeIngredient[];
+  instructions: string[];
+  calories: number;
   protein: number;
   carbs: number;
-  fat: number;
-  fiber: number;
-  energy: number;
-  iron_mg: number;
-  magnesium_mg: number;
-  calcium_mg: number;
-  potassium_mg: number;
-  sodium_mg: number;
-  vitamin_c_mg: number;
-  ingredients?: RecipeIngredient[];
+  fats: number;
+  fiber?: number;
+}
+
+export type MealSlot = 'preBreakfast' | 'breakfast' | 'lunch' | 'snack' | 'dinner';
+
+export interface DayPlan {
+  preBreakfast: string[];
+  breakfast: string[];
+  lunch: string[];
+  snack: string[];
+  dinner: string[];
+}
+
+export interface MealPlanDay {
+  date: string;
+  meals: {
+    breakfast?: string; // recipeId
+    lunch?: string;
+    dinner?: string;
+    snack?: string;
+  };
 }
 
 export interface WeeklyPlanEntry {
   id: number;
   day: string;
-  meal_type: MealType;
+  meal_type: string;
   recipe_ids: number[];
 }
+

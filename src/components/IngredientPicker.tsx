@@ -1,32 +1,20 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search } from 'lucide-react';
+import { X, Search, Plus } from 'lucide-react';
 import { Ingredient } from '../types';
-import { CATEGORY_LABELS, CATEGORY_ICONS } from '../constants';
-import { fetchIngredients } from '../api';
+import { INITIAL_INGREDIENTS } from '../constants';
 
 interface IngredientPickerProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (ingredient: Ingredient) => void;
+  onAddNew: () => void;
 }
 
-export const IngredientPicker: React.FC<IngredientPickerProps> = ({ isOpen, onClose, onSelect }) => {
+export const IngredientPicker: React.FC<IngredientPickerProps> = ({ isOpen, onClose, onSelect, onAddNew }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [ingredients, setIngredients] = React.useState<Ingredient[]>([]);
-  const [loading, setLoading] = React.useState(false);
 
-  React.useEffect(() => {
-    if (isOpen && ingredients.length === 0) {
-      setLoading(true);
-      fetchIngredients({ limit: 1000 })
-        .then(setIngredients)
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
-  }, [isOpen]);
-
-  const filteredIngredients = ingredients.filter(ing => 
+  const filteredIngredients = INITIAL_INGREDIENTS.filter(ing => 
     ing.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ing.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -73,12 +61,23 @@ export const IngredientPicker: React.FC<IngredientPickerProps> = ({ isOpen, onCl
             </div>
 
             <div className="flex-grow overflow-y-auto p-4 space-y-2">
-              {loading && (
-                <div className="flex justify-center py-8">
-                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <button 
+                onClick={() => {
+                  onAddNew();
+                  onClose();
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-dashed border-primary/30 text-primary hover:bg-primary/10 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Plus className="w-5 h-5" />
                 </div>
-              )}
-              {!loading && filteredIngredients.map((ing) => (
+                <div>
+                  <p className="font-bold text-sm">Add New Ingredient</p>
+                  <p className="text-[10px] opacity-70">Create a custom ingredient</p>
+                </div>
+              </button>
+
+              {filteredIngredients.map((ing) => (
                 <button 
                   key={ing.id}
                   onClick={() => {
@@ -88,19 +87,14 @@ export const IngredientPicker: React.FC<IngredientPickerProps> = ({ isOpen, onCl
                   className="w-full flex items-center gap-3 p-3 rounded-xl bg-surface-lowest border border-surface-container hover:border-primary/30 hover:bg-primary/5 transition-all group text-left"
                 >
                   <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-xl">
-                    {CATEGORY_ICONS[ing.category] || '📦'}
+                    {ing.icon}
                   </div>
                   <div className="flex-grow">
                     <p className="font-bold text-sm group-hover:text-primary transition-colors">{ing.name}</p>
-                    <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-medium">{CATEGORY_LABELS[ing.category] || ing.category} • {ing.serving_unit}</p>
+                    <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-medium">{ing.category} • Base: {ing.baseUnit}</p>
                   </div>
                 </button>
               ))}
-              {!loading && filteredIngredients.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-on-surface-variant font-medium text-sm">No ingredients found.</p>
-                </div>
-              )}
             </div>
           </motion.div>
         </>

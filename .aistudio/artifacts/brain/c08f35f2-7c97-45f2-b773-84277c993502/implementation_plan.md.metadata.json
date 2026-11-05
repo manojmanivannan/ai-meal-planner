@@ -1,0 +1,6 @@
+{
+  "summary": "Implementation plan for full-fledged nutritional feature parity on recipe cards and weekly planner meal slots:\n- 5-slot architecture (Pre-breakfast, Breakfast, Lunch, Snack, Dinner) supporting multiple items per slot with individual X removal, slot clearing, and quick-add.\n- Color-coded inline macro telemetry (Calories, Protein in emerald, Carbs in cyan, Fat in coral) on every recipe card item.\n- Comprehensive daily nutrition footer with total calories, multi-segment macro distribution bar, and dedicated Protein, Carbs, Fat, and Fiber metric cards.\n- Weekly summary analytics strip featuring Planned Meals progress, Average Daily Calories, Protein, Carbs, Fat, and Fiber.\n- Type definitions and recipe constants upgraded to track dietary fiber.",
+  "updatedAt": "2026-11-05T19:37:31.300243274Z",
+  "requestFeedback": true,
+  "userFacing": true
+}
