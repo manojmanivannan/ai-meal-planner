@@ -3,7 +3,8 @@ import { motion } from 'motion/react';
 import { 
   Sunrise, Sun, Moon, Coffee, Plus, 
   Search, Heart, ArrowRight, Sparkles, 
-  Clock, Edit2, X 
+  Clock, Edit2, X, ChevronLeft, ChevronRight,
+  Calendar, LayoutGrid
 } from 'lucide-react';
 import { RecipeCard } from '../components/RecipeCard';
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS } from '../constants';
@@ -292,149 +293,137 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
     }
   };
 
-  // Render a single Day Column Card with full nutrition telemetry
-  const renderDayCard = (day: string, isFullWidth = false) => {
-    const totals = getDayTotals(day);
-    const theme = getDayTheme(day);
+  // Render meal slots list for a day
+  const renderMealSlotsContent = (day: string) => {
     const plan = dayPlans[day] || { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] };
 
     return (
-      <div 
-        key={day}
-        className={`bg-surface-lowest/95 backdrop-blur-md rounded-2xl p-5 flex flex-col justify-between border transition-all duration-300 ${
-          theme.borderColor
-        } ${isFullWidth ? 'w-full' : 'w-full md:w-[320px] shrink-0'}`}
-      >
-        {/* Day Card Header */}
-        <div>
-          <div className="flex items-center justify-between mb-5 pb-3 border-b border-surface-container/60">
-            <div className="flex items-center gap-2.5">
-              <span className={`w-2.5 h-2.5 rounded-full ${theme.dotColor}`} />
-              <h3 className="font-extrabold text-lg text-on-surface">{day}</h3>
-              {theme.isToday && (
-                <span className="bg-amber-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider uppercase">
-                  TODAY
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="bg-surface-container-high text-on-surface-variant font-mono text-xs font-bold px-2 py-0.5 rounded-md tabular-nums">
-                {totals.filledSlots}/5
-              </span>
-            </div>
-          </div>
+      <div className="space-y-3">
+        {MEAL_SLOTS.map((slotConfig) => {
+          const itemIds = plan[slotConfig.key] || [];
+          const hasItems = itemIds.length > 0;
 
-          {/* 5 Meal Slots */}
-          <div className="space-y-4">
-            {MEAL_SLOTS.map((slotConfig) => {
-              const itemIds = plan[slotConfig.key] || [];
-              const hasItems = itemIds.length > 0;
-
-              return (
-                <div key={slotConfig.key} className="space-y-2">
-                  {/* Slot Title & Actions */}
-                  <div className="flex items-center justify-between text-[11px] font-bold text-on-surface-variant">
-                    <div className="flex items-center gap-1.5 uppercase tracking-wider">
-                      <span>{slotConfig.emoji}</span>
-                      <span>{slotConfig.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {hasItems && (
-                        <button
-                          onClick={() => handleClearSlot(day, slotConfig.key)}
-                          className="hover:text-error transition-colors text-[10px] uppercase font-semibold"
-                        >
-                          Clear
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleOpenPicker(day, slotConfig.key)}
-                        className="text-primary hover:underline transition-colors flex items-center gap-0.5 text-[10px] uppercase font-bold"
-                      >
-                        + Add
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Slot Items */}
-                  {hasItems ? (
-                    <div className="space-y-2">
-                      {itemIds.map((recipeId, idx) => {
-                        const recipe = getRecipeById(recipeId);
-                        if (!recipe) return null;
-
-                        return (
-                          <div
-                            key={`${recipeId}-${idx}`}
-                            className="bg-surface-container-low/70 hover:bg-surface-container-low border border-surface-container/60 rounded-xl p-3 transition-all group"
-                          >
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <div
-                                onClick={() => onRecipeClick(recipe.id)}
-                                className="flex items-center gap-2 cursor-pointer flex-grow min-w-0"
-                              >
-                                <span className={`w-2 h-2 rounded-full shrink-0 ${recipe.calories < 150 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                                <span className="font-bold text-sm text-on-surface hover:text-primary transition-colors truncate">
-                                  {recipe.title}
-                                </span>
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveItem(day, slotConfig.key, idx);
-                                }}
-                                className="text-on-surface-variant/40 hover:text-error p-0.5 rounded transition-colors shrink-0"
-                                title="Remove item"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-
-                            {/* Macro Telemetry: kcal • P • C • F */}
-                            <div className="flex items-center gap-1.5 text-xs font-mono tabular-nums text-on-surface-variant pl-4 flex-wrap">
-                              <span className="font-bold text-on-surface">{recipe.calories} kcal</span>
-                              <span className="opacity-30">•</span>
-                              <span className="text-emerald-400 font-semibold">{recipe.protein}g P</span>
-                              <span className="opacity-30">•</span>
-                              <span className="text-sky-400 font-semibold">{recipe.carbs}g C</span>
-                              <span className="opacity-30">•</span>
-                              <span className="text-rose-400 font-semibold">{recipe.fats}g F</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
+          return (
+            <div key={slotConfig.key} className="space-y-1.5">
+              {/* Slot Title & Actions */}
+              <div className="flex items-center justify-between text-[11px] font-bold text-on-surface-variant">
+                <div className="flex items-center gap-1.5 uppercase tracking-wider">
+                  <span>{slotConfig.emoji}</span>
+                  <span>{slotConfig.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasItems && (
                     <button
-                      onClick={() => handleOpenPicker(day, slotConfig.key)}
-                      className="w-full py-2.5 px-3 rounded-xl border border-dashed border-surface-container-highest/60 hover:border-primary/50 bg-surface-container-lowest/40 hover:bg-surface-container-low/50 text-on-surface-variant/70 hover:text-primary transition-all text-xs font-semibold flex items-center justify-center gap-1.5"
+                      onClick={() => handleClearSlot(day, slotConfig.key)}
+                      className="hover:text-error transition-colors text-[10px] uppercase font-semibold"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Assign {slotConfig.label.toLowerCase()}</span>
+                      Clear
                     </button>
                   )}
+                  <button
+                    onClick={() => handleOpenPicker(day, slotConfig.key)}
+                    className="text-primary hover:underline transition-colors flex items-center gap-0.5 text-[10px] uppercase font-bold"
+                  >
+                    + Add
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+
+              {/* Slot Items */}
+              {hasItems ? (
+                <div className="space-y-1.5">
+                  {itemIds.map((recipeId, idx) => {
+                    const recipe = getRecipeById(recipeId);
+                    if (!recipe) return null;
+
+                    return (
+                      <div
+                        key={`${recipeId}-${idx}`}
+                        className="bg-surface-container-low/70 hover:bg-surface-container-low border border-surface-container/60 rounded-xl p-2.5 transition-all group"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div
+                            onClick={() => onRecipeClick(recipe.id)}
+                            className="flex items-center gap-2 cursor-pointer flex-grow min-w-0"
+                          >
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${recipe.calories < 150 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                            <span className="font-bold text-sm text-on-surface hover:text-primary transition-colors truncate">
+                              {recipe.title}
+                            </span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveItem(day, slotConfig.key, idx);
+                            }}
+                            className="text-on-surface-variant/40 hover:text-error p-0.5 rounded transition-colors shrink-0"
+                            title="Remove item"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Macro Telemetry: kcal • P • C • F */}
+                        <div className="flex items-center gap-1.5 text-xs font-mono tabular-nums text-on-surface-variant pl-4 flex-wrap">
+                          <span className="font-bold text-on-surface">{recipe.calories} kcal</span>
+                          <span className="opacity-30">•</span>
+                          <span className="text-emerald-500 font-semibold">{recipe.protein}g P</span>
+                          <span className="opacity-30">•</span>
+                          <span className="text-sky-500 font-semibold">{recipe.carbs}g C</span>
+                          <span className="opacity-30">•</span>
+                          <span className="text-rose-500 font-semibold">{recipe.fats}g F</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleOpenPicker(day, slotConfig.key)}
+                  className="w-full py-2 px-3 rounded-xl border border-dashed border-surface-container-highest/60 hover:border-primary/50 bg-surface-container-lowest/40 hover:bg-surface-container-low/50 text-on-surface-variant/70 hover:text-primary transition-all text-xs font-semibold flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Assign {slotConfig.label.toLowerCase()}</span>
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Dedicated Daily Nutrition Summary Card
+  const renderNutritionSummaryCard = (day: string) => {
+    const totals = getDayTotals(day);
+    const plan = dayPlans[day] || { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] };
+
+    return (
+      <div className="bg-surface-lowest/95 backdrop-blur-md rounded-2xl p-4 border border-surface-container/70 shadow-sm space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-surface-container/60">
+          <span className="text-[10px] font-bold tracking-wider text-on-surface-variant uppercase">
+            Daily Nutrition ({day})
+          </span>
+          <span className="text-xs font-mono font-bold text-on-surface-variant">
+            {totals.filledSlots}/5 Slots
+          </span>
         </div>
 
-        {/* Daily Total & Deep Nutrition Footer */}
-        <div className="mt-6 pt-5 border-t border-surface-container/60 space-y-3.5">
-          <div className="flex items-baseline justify-between">
-            <span className="text-[11px] font-bold tracking-wider text-on-surface-variant uppercase">
-              DAILY TOTAL
+        {/* Calories and Proportional Bar */}
+        <div>
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+              Total Intake
             </span>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black font-mono tracking-tight text-on-surface tabular-nums">
+              <span className="text-3xl font-black font-mono tracking-tight text-on-surface tabular-nums">
                 {totals.calories}
               </span>
               <span className="text-xs font-bold text-on-surface-variant">kcal</span>
             </div>
           </div>
 
-          {/* Color-coded Macro Distribution Bar */}
-          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden flex">
+          <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden flex">
             <div 
               className="bg-emerald-400 h-full transition-all duration-500" 
               style={{ width: `${totals.macroPercentages.protein}%` }} 
@@ -451,40 +440,143 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
               title={`Fat: ${totals.macroPercentages.fat}%`}
             />
           </div>
+        </div>
 
-          {/* 4 Macro Cards */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
-              <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
-                PROTEIN
-              </span>
-              <span className="text-sm font-black font-mono text-emerald-400 tabular-nums">
-                {totals.protein}g
-              </span>
+        {/* 4 Macro KPI tiles */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
+            <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
+              PROTEIN
+            </span>
+            <span className="text-sm font-black font-mono text-emerald-500 tabular-nums">
+              {totals.protein}g
+            </span>
+          </div>
+          <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
+            <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
+              CARBS
+            </span>
+            <span className="text-sm font-black font-mono text-sky-500 tabular-nums">
+              {totals.carbs}g
+            </span>
+          </div>
+          <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
+            <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
+              FAT
+            </span>
+            <span className="text-sm font-black font-mono text-rose-500 tabular-nums">
+              {totals.fats}g
+            </span>
+          </div>
+          <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
+            <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
+              FIBER
+            </span>
+            <span className="text-sm font-black font-mono text-violet-500 tabular-nums">
+              {totals.fiber}g
+            </span>
+          </div>
+        </div>
+
+        {/* Slot-by-Slot Calorie Breakdown */}
+        <div className="pt-2 border-t border-surface-container/60 space-y-1.5 text-xs">
+          <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">
+            Energy by Meal Slot
+          </span>
+          {MEAL_SLOTS.map(slot => {
+            const itemIds = plan[slot.key] || [];
+            let slotCal = 0;
+            itemIds.forEach(id => {
+              const r = getRecipeById(id);
+              if (r) slotCal += r.calories;
+            });
+
+            return (
+              <div key={slot.key} className="flex justify-between items-center text-on-surface-variant">
+                <span className="flex items-center gap-1.5">
+                  <span>{slot.emoji}</span>
+                  <span className="text-[11px]">{slot.label}</span>
+                </span>
+                <span className="font-mono font-bold text-on-surface tabular-nums">
+                  {slotCal > 0 ? `${slotCal} kcal` : '—'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Render a single Day Column Card (for 7-Day Board View)
+  const renderDayCard = (day: string) => {
+    const totals = getDayTotals(day);
+    const theme = getDayTheme(day);
+
+    return (
+      <div 
+        key={day}
+        className={`bg-surface-lowest/95 backdrop-blur-md rounded-2xl p-4 flex flex-col justify-between border transition-all duration-300 w-[290px] shrink-0 ${
+          theme.borderColor
+        }`}
+      >
+        <div>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-surface-container/60">
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${theme.dotColor}`} />
+              <h3 className="font-extrabold text-base text-on-surface">{day}</h3>
+              {theme.isToday && (
+                <span className="bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wider uppercase">
+                  TODAY
+                </span>
+              )}
             </div>
-            <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
-              <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
-                CARBS
+            <span className="bg-surface-container-high text-on-surface-variant font-mono text-xs font-bold px-2 py-0.5 rounded-md tabular-nums">
+              {totals.filledSlots}/5
+            </span>
+          </div>
+
+          {/* Slots */}
+          {renderMealSlotsContent(day)}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-4 pt-3 border-t border-surface-container/60 space-y-2">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[10px] font-bold tracking-wider text-on-surface-variant uppercase">
+              DAILY TOTAL
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-black font-mono tracking-tight text-on-surface tabular-nums">
+                {totals.calories}
               </span>
-              <span className="text-sm font-black font-mono text-sky-400 tabular-nums">
-                {totals.carbs}g
-              </span>
+              <span className="text-xs font-bold text-on-surface-variant">kcal</span>
             </div>
-            <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
-              <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
-                FAT
-              </span>
-              <span className="text-sm font-black font-mono text-rose-400 tabular-nums">
-                {totals.fats}g
-              </span>
+          </div>
+
+          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden flex">
+            <div className="bg-emerald-400 h-full" style={{ width: `${totals.macroPercentages.protein}%` }} />
+            <div className="bg-sky-400 h-full" style={{ width: `${totals.macroPercentages.carbs}%` }} />
+            <div className="bg-rose-400 h-full" style={{ width: `${totals.macroPercentages.fat}%` }} />
+          </div>
+
+          <div className="grid grid-cols-4 gap-1 text-center font-mono text-xs pt-1">
+            <div className="bg-surface-container-low/70 rounded p-1">
+              <span className="block text-[8px] font-bold text-on-surface-variant">P</span>
+              <span className="text-emerald-500 font-bold">{totals.protein}g</span>
             </div>
-            <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
-              <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
-                FIBER
-              </span>
-              <span className="text-sm font-black font-mono text-violet-400 tabular-nums">
-                {totals.fiber}g
-              </span>
+            <div className="bg-surface-container-low/70 rounded p-1">
+              <span className="block text-[8px] font-bold text-on-surface-variant">C</span>
+              <span className="text-sky-500 font-bold">{totals.carbs}g</span>
+            </div>
+            <div className="bg-surface-container-low/70 rounded p-1">
+              <span className="block text-[8px] font-bold text-on-surface-variant">F</span>
+              <span className="text-rose-500 font-bold">{totals.fats}g</span>
+            </div>
+            <div className="bg-surface-container-low/70 rounded p-1">
+              <span className="block text-[8px] font-bold text-on-surface-variant">Fib</span>
+              <span className="text-violet-500 font-bold">{totals.fiber}g</span>
             </div>
           </div>
         </div>
@@ -492,35 +584,64 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
     );
   };
 
+  const currentDayIndex = DAYS_OF_WEEK.indexOf(selectedDay as any);
+  const prevDay = DAYS_OF_WEEK[(currentDayIndex - 1 + DAYS_OF_WEEK.length) % DAYS_OF_WEEK.length];
+  const nextDay = DAYS_OF_WEEK[(currentDayIndex + 1) % DAYS_OF_WEEK.length];
+  const selectedTheme = getDayTheme(selectedDay);
+
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="pb-16 space-y-8"
+      className="pb-10 space-y-3"
     >
-      {/* Top Header & Actions */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-              Weekly Planner
-            </span>
-            <span className="text-xs text-on-surface-variant font-medium">Active Plan</span>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface">
+      {/* Tight Top Control Header (Single row ~40px) */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl md:text-2xl font-black tracking-tight text-on-surface">
             Meal Schedule & Macros
           </h1>
-          <p className="text-on-surface-variant text-sm md:text-base mt-1 max-w-2xl">
-            Organize 5 meal slots per day and monitor nutritional balance with real-time macro calculations.
-          </p>
+          <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/25">
+            {weeklyAnalytics.plannedPercent}% Planned ({weeklyAnalytics.plannedCount}/{weeklyAnalytics.totalSlots})
+          </span>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Center / Implied Day Navigation in Day Focus View */}
+        {viewMode === 'day' && (
+          <div className="flex items-center p-1 bg-surface-container-low rounded-xl border border-surface-container gap-1">
+            {DAYS_OF_WEEK.map(d => {
+              const isSelected = selectedDay === d;
+              const isToday = d === 'Thursday';
+              const dTotals = getDayTotals(d);
+
+              return (
+                <button
+                  key={d}
+                  onClick={() => setSelectedDay(d)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    isSelected 
+                      ? 'bg-primary text-on-primary shadow-sm' 
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  <span>{d.slice(0, 3)}</span>
+                  {isToday && (
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-amber-400'}`} />
+                  )}
+                  <span className="opacity-60 text-[10px] font-mono">{dTotals.filledSlots}/5</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Right Action Controls */}
+        <div className="flex items-center gap-2">
           {/* View mode toggle: Day Focus vs 7-Day Board */}
           <div className="flex items-center p-1 bg-surface-container-low rounded-xl border border-surface-container">
             <button
               onClick={() => setViewMode('day')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                 viewMode === 'day' 
                   ? 'bg-primary text-on-primary shadow-sm' 
                   : 'text-on-surface-variant hover:text-on-surface'
@@ -530,7 +651,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
             </button>
             <button
               onClick={() => setViewMode('week')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                 viewMode === 'week' 
                   ? 'bg-primary text-on-primary shadow-sm' 
                   : 'text-on-surface-variant hover:text-on-surface'
@@ -542,174 +663,92 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
 
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-surface-container-low hover:bg-surface-container rounded-xl text-on-surface text-xs font-bold transition-colors border border-surface-container"
+            className="px-3 py-1.5 bg-surface-container-low hover:bg-surface-container rounded-xl text-on-surface text-xs font-bold transition-colors border border-surface-container"
           >
-            <span>Export PDF</span>
+            Export PDF
           </button>
           {onBrowseRecipes && (
             <button
               onClick={onBrowseRecipes}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-md"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary text-on-primary rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-md"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Browse Recipes</span>
             </button>
           )}
         </div>
       </header>
 
-      {/* Weekly Stats Strip Banner (Screenshot 2) */}
-      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* Planned meals */}
-        <div className="bg-surface-lowest/90 backdrop-blur-md rounded-2xl p-4 border border-surface-container/60 flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-baseline mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-                PLANNED MEALS
-              </span>
-              <span className="text-xs font-mono font-bold text-on-surface tabular-nums">
-                {weeklyAnalytics.plannedCount}/{weeklyAnalytics.totalSlots}
-              </span>
-            </div>
-            <div className="text-2xl font-black font-mono tracking-tight text-on-surface tabular-nums">
-              {weeklyAnalytics.plannedPercent}%
-            </div>
-            <p className="text-[11px] text-on-surface-variant">of weekly plan</p>
-          </div>
-          <div className="mt-3 h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-            <div 
-              className="bg-emerald-400 h-full rounded-full transition-all duration-500" 
-              style={{ width: `${weeklyAnalytics.plannedPercent}%` }} 
-            />
-          </div>
+      {/* Slim Weekly Nutrition HUD Strip (~34px height) */}
+      <section className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-surface-lowest/90 backdrop-blur-md rounded-xl border border-surface-container/60 text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Weekly Daily Avg:</span>
+          <span className="font-mono font-bold text-on-surface">{weeklyAnalytics.avgDailyCal} kcal</span>
+          <span className="opacity-30">•</span>
+          <span className="font-mono text-emerald-500 font-semibold">{weeklyAnalytics.avgDailyProtein}g Prot</span>
+          <span className="opacity-30">•</span>
+          <span className="font-mono text-sky-500 font-semibold">{weeklyAnalytics.avgDailyCarbs}g Carb</span>
+          <span className="opacity-30">•</span>
+          <span className="font-mono text-rose-500 font-semibold">{weeklyAnalytics.avgDailyFat}g Fat</span>
+          <span className="opacity-30">•</span>
+          <span className="font-mono text-violet-500 font-semibold">{weeklyAnalytics.avgDailyFiber}g Fib</span>
         </div>
-
-        {/* Avg Daily Cal */}
-        <div className="bg-surface-lowest/90 backdrop-blur-md rounded-2xl p-4 border border-surface-container/60 flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-              AVG DAILY CAL
-            </span>
-            <div className="text-2xl font-black font-mono tracking-tight text-on-surface tabular-nums mt-1">
-              {weeklyAnalytics.avgDailyCal} <span className="text-xs font-normal text-on-surface-variant">kcal/day</span>
-            </div>
-          </div>
-          <p className="text-[11px] text-on-surface-variant font-mono tabular-nums mt-3">
-            Total: {weeklyAnalytics.totalCal} kcal
-          </p>
-        </div>
-
-        {/* Avg Daily Protein */}
-        <div className="bg-surface-lowest/90 backdrop-blur-md rounded-2xl p-4 border border-surface-container/60 flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-              AVG DAILY PROTEIN
-            </span>
-            <div className="text-2xl font-black font-mono tracking-tight text-emerald-400 tabular-nums mt-1">
-              {weeklyAnalytics.avgDailyProtein} <span className="text-xs font-normal text-on-surface-variant">g/day</span>
-            </div>
-          </div>
-          <p className="text-[11px] text-on-surface-variant font-mono tabular-nums mt-3">
-            Total: {weeklyAnalytics.totalProtein} g
-          </p>
-        </div>
-
-        {/* Avg Daily Carbs */}
-        <div className="bg-surface-lowest/90 backdrop-blur-md rounded-2xl p-4 border border-surface-container/60 flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-              AVG DAILY CARBS
-            </span>
-            <div className="text-2xl font-black font-mono tracking-tight text-sky-400 tabular-nums mt-1">
-              {weeklyAnalytics.avgDailyCarbs} <span className="text-xs font-normal text-on-surface-variant">g/day</span>
-            </div>
-          </div>
-          <p className="text-[11px] text-on-surface-variant font-mono tabular-nums mt-3">
-            Total: {weeklyAnalytics.totalCarbs} g
-          </p>
-        </div>
-
-        {/* Avg Daily Fat */}
-        <div className="bg-surface-lowest/90 backdrop-blur-md rounded-2xl p-4 border border-surface-container/60 flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-              AVG DAILY FAT
-            </span>
-            <div className="text-2xl font-black font-mono tracking-tight text-rose-400 tabular-nums mt-1">
-              {weeklyAnalytics.avgDailyFat} <span className="text-xs font-normal text-on-surface-variant">g/day</span>
-            </div>
-          </div>
-          <p className="text-[11px] text-on-surface-variant font-mono tabular-nums mt-3">
-            Total: {weeklyAnalytics.totalFat} g
-          </p>
-        </div>
-
-        {/* Avg Daily Fiber */}
-        <div className="bg-surface-lowest/90 backdrop-blur-md rounded-2xl p-4 border border-surface-container/60 flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-              AVG DAILY FIBER
-            </span>
-            <div className="text-2xl font-black font-mono tracking-tight text-violet-400 tabular-nums mt-1">
-              {weeklyAnalytics.avgDailyFiber} <span className="text-xs font-normal text-on-surface-variant">g/day</span>
-            </div>
-          </div>
-          <p className="text-[11px] text-on-surface-variant font-mono tabular-nums mt-3">
-            Total: {weeklyAnalytics.totalFiber} g
-          </p>
-        </div>
-      </section>
-
-      {/* Day-by-Day Tabbed Navigation */}
-      <section>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-          {DAYS_OF_WEEK.map((day) => {
-            const isSelected = selectedDay === day;
-            const totals = getDayTotals(day);
-            const isToday = day === 'Thursday';
-
-            return (
-              <button
-                key={day}
-                onClick={() => setSelectedDay(day)}
-                className={`px-5 py-3 rounded-2xl font-bold flex items-center gap-3 transition-all shrink-0 border ${
-                  isSelected 
-                    ? 'bg-primary text-on-primary border-primary shadow-lg scale-102' 
-                    : 'bg-surface-lowest/80 text-on-surface-variant hover:text-on-surface border-surface-container hover:bg-surface-container-low'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{day}</span>
-                  {isToday && (
-                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                      isSelected ? 'bg-amber-400 text-black' : 'bg-amber-400/20 text-amber-300'
-                    }`}>
-                      TODAY
-                    </span>
-                  )}
-                </div>
-                <span className={`text-xs font-mono px-2 py-0.5 rounded-full tabular-nums ${
-                  isSelected ? 'bg-black/20 text-white' : 'bg-surface-container-high text-on-surface-variant'
-                }`}>
-                  {totals.filledSlots}/5
-                </span>
-              </button>
-            );
-          })}
+        <div className="hidden sm:flex items-center gap-4 text-on-surface-variant font-mono text-xs">
+          <span>Week Total: {weeklyAnalytics.totalCal.toLocaleString()} kcal</span>
+          <span className="opacity-30">|</span>
+          <span>{weeklyAnalytics.plannedCount}/{weeklyAnalytics.totalSlots} Planned</span>
         </div>
       </section>
 
       {/* Main Viewport Content */}
       {viewMode === 'day' ? (
-        /* Single Day Focused View with full deep nutrition */
-        <div className="max-w-2xl mx-auto">
-          {renderDayCard(selectedDay, true)}
+        /* Day Focus View: Side-by-side Master/Detail (Left: Meal Slots, Right: Nutrition Card) */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left Column: 5 Meal Slots */}
+          <div className="lg:col-span-8 bg-surface-lowest/95 backdrop-blur-md rounded-2xl p-5 border border-surface-container/70 shadow-sm">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-surface-container/60">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSelectedDay(prevDay)}
+                  className="p-1 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                  title={`Previous: ${prevDay}`}
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className={`w-3 h-3 rounded-full ${selectedTheme.dotColor}`} />
+                  <h2 className="text-xl font-black text-on-surface">{selectedDay}</h2>
+                  {selectedTheme.isToday && (
+                    <span className="bg-amber-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      TODAY
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setSelectedDay(nextDay)}
+                  className="p-1 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                  title={`Next: ${nextDay}`}
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+              <span className="text-xs font-mono font-bold bg-surface-container-high text-on-surface-variant px-2.5 py-1 rounded-lg">
+                {getDayTotals(selectedDay).filledSlots}/5 Slots Planned
+              </span>
+            </div>
+            {renderMealSlotsContent(selectedDay)}
+          </div>
+
+          {/* Right Column: Sticky Daily Nutrition Summary (Always visible above the fold!) */}
+          <div className="lg:col-span-4 sticky top-16">
+            {renderNutritionSummaryCard(selectedDay)}
+          </div>
         </div>
       ) : (
-        /* 7-Day Board View (Horizontal scrollable columns matching Screenshot 2) */
-        <div className="overflow-x-auto no-scrollbar pb-6">
-          <div className="flex gap-5 min-w-[1400px]">
-            {DAYS_OF_WEEK.map((day) => renderDayCard(day, false))}
+        /* 7-Day Board View: Horizontal board with compact cards */
+        <div className="overflow-x-auto no-scrollbar pb-6 pt-1">
+          <div className="flex gap-4 min-w-[1400px]">
+            {DAYS_OF_WEEK.map((day) => renderDayCard(day))}
           </div>
         </div>
       )}
