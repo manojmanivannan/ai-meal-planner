@@ -1,23 +1,29 @@
 import React from 'react';
 import { Settings } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 export const TopBar: React.FC = () => {
   return (
     <header className="bg-surface sticky top-0 z-40 border-b border-surface-container/50">
-      <div className="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center w-full px-6 py-3.5 max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden">
-            <img 
-              alt="User profile" 
-              src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100" 
-              className="w-full h-full object-cover"
-            />
+          <BrandLogo size={38} />
+          <div className="flex flex-col">
+            <h1 className="text-xl font-extrabold tracking-tight text-on-surface leading-tight">Kitchen Table</h1>
+            <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-400">MEAL PLANNER</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-gradient tracking-tight">Kitchen Table</h1>
         </div>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors duration-200">
-          <Settings className="w-6 h-6 text-on-surface-variant" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors duration-200"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5 text-on-surface-variant" />
+          </button>
+          <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-center text-xs">
+            KT
+          </div>
+        </div>
       </div>
     </header>
   );

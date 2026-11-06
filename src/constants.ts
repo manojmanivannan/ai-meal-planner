@@ -1,6 +1,6 @@
 import { Ingredient, Recipe } from './types';
 
-export const API_BASE = '';
+export const API_BASE = ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_URL) || '';
 
 export const INITIAL_INGREDIENTS: Ingredient[] = [
   {

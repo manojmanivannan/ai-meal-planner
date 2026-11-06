@@ -18,3 +18,25 @@ View your app in AI Studio: https://ai.studio/apps/c08f35f2-7c97-45f2-b773-84277
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Run with Docker Compose
+
+After cloning the repository, you can run the entire application locally with zero manual setup.
+
+**Prerequisites:** Docker & Docker Compose installed on your machine.
+
+### Running Locally
+```bash
+docker compose up --build
+```
+- **Web App**: [http://localhost:3000](http://localhost:3000)
+- **Backend API & Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **PostgreSQL Database**: `localhost:5432` (User: `mealplanner`, Pass: `mealplanner`, DB: `mealplanner`)
+
+### Stopping Services
+```bash
+docker compose down
+# Or to reset data:
+docker compose down -v
+```
+
