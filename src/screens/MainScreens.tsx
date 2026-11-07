@@ -7,7 +7,7 @@ import {
   Calendar, LayoutGrid
 } from 'lucide-react';
 import { RecipeCard } from '../components/RecipeCard';
-import { INITIAL_RECIPES, INITIAL_INGREDIENTS } from '../constants';
+import { INITIAL_RECIPES, INITIAL_INGREDIENTS, LEGACY_RECIPE_ID_MAP } from '../constants';
 import { Recipe, Ingredient } from '../types';
 
 import { RecipePicker } from '../components/RecipePicker';
@@ -46,63 +46,65 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
   const [activeSlot, setActiveSlot] = React.useState<{ day: string; slot: MealSlot } | null>(null);
 
-  // Initial plan populated with authentic recipes matching reference designs
+  // Initial plan populated from canonical weekly_plan.csv
   const [dayPlans, setDayPlans] = React.useState<Record<string, Record<MealSlot, string[]>>>(() => {
     return {
       Monday: {
-        preBreakfast: ['r-cumin-tea'],
-        breakfast: ['r-garlic-bread'],
-        lunch: ['r-stir-fry-noodles'],
+        preBreakfast: ['54'],
+        breakfast: ['80'],
+        lunch: ['24'],
         snack: [],
-        dinner: ['r-chicken-saute', 'r-boiled-rice']
+        dinner: ['205', '206']
       },
       Tuesday: {
-        preBreakfast: ['r-cumin-tea'],
-        breakfast: ['r-avocado-toast'],
-        lunch: ['r-pasta-veggie'],
+        preBreakfast: ['54'],
+        breakfast: ['202'],
+        lunch: ['16'],
         snack: [],
-        dinner: ['r-bhaji-gravy']
+        dinner: ['67']
       },
       Wednesday: {
-        preBreakfast: ['r-cumin-tea'],
-        breakfast: ['r-overnight-oats'],
-        lunch: ['r-chapati', 'r-lentil-masala'],
+        preBreakfast: ['54'],
+        breakfast: ['3'],
+        lunch: ['65', '97'],
         snack: [],
-        dinner: ['r-lentil-stew']
+        dinner: ['74']
       },
       Thursday: {
-        preBreakfast: ['r-cumin-tea'],
-        breakfast: ['r-overnight-oats'],
-        lunch: ['r-gongura-thovaiyal', 'r-boiled-rice'],
+        preBreakfast: ['54'],
+        breakfast: ['3'],
+        lunch: ['208', '206'],
         snack: [],
-        dinner: ['r-sweet-potato-chaat']
+        dinner: ['85']
       },
       Friday: {
-        preBreakfast: ['r-cumin-tea'],
-        breakfast: ['r-avocado-toast'],
-        lunch: ['r2'],
-        snack: ['r-sweet-potato-chaat'],
-        dinner: ['r3']
+        preBreakfast: ['54'],
+        breakfast: ['49'],
+        lunch: [],
+        snack: [],
+        dinner: ['14']
       },
       Saturday: {
-        preBreakfast: [],
-        breakfast: ['r1'],
-        lunch: ['r4'],
-        snack: ['r-sweet-potato-chaat'],
-        dinner: ['r-chicken-saute']
+        preBreakfast: ['54'],
+        breakfast: [],
+        lunch: [],
+        snack: [],
+        dinner: ['68']
       },
       Sunday: {
-        preBreakfast: ['r-cumin-tea'],
-        breakfast: ['r-overnight-oats'],
-        lunch: ['r-stir-fry-noodles'],
+        preBreakfast: [],
+        breakfast: [],
+        lunch: [],
         snack: [],
-        dinner: ['r-lentil-stew']
+        dinner: []
       }
     };
   });
 
   const getRecipeById = React.useCallback((id: string): Recipe | undefined => {
-    return recipes.find(r => r.id === id) || INITIAL_RECIPES.find(r => r.id === id);
+    const resolvedId = LEGACY_RECIPE_ID_MAP[id] || id;
+    return recipes.find(r => r.id === resolvedId || r.id === id || String(r.id) === String(id)) || 
+           INITIAL_RECIPES.find(r => r.id === resolvedId || r.id === id || String(r.id) === String(id));
   }, [recipes]);
 
   // Calculate day totals
@@ -773,6 +775,10 @@ interface RecipesScreenProps {
 
 export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeClick, onEditRecipe }) => {
   const [selectedFilter, setSelectedFilter] = React.useState('All Recipes');
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const categoriesContainerRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
+  const [canScrollRight, setCanScrollRight] = React.useState(true);
 
   // Extract unique tags from all recipes
   const allTags = React.useMemo(() => {
@@ -782,63 +788,105 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
   }, [recipes]);
 
   const filteredRecipes = React.useMemo(() => {
-    if (selectedFilter === 'All Recipes') return recipes;
-    return recipes.filter(r => r.tags.includes(selectedFilter));
-  }, [recipes, selectedFilter]);
+    let result = recipes;
+    if (selectedFilter !== 'All Recipes') {
+      result = result.filter(r => r.tags.includes(selectedFilter));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(r => 
+        r.title.toLowerCase().includes(q) ||
+        r.description.toLowerCase().includes(q) ||
+        r.tags.some(t => t.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [recipes, selectedFilter, searchQuery]);
+
+  const checkScrollState = React.useCallback(() => {
+    const el = categoriesContainerRef.current;
+    if (el) {
+      setCanScrollLeft(el.scrollLeft > 10);
+      setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    checkScrollState();
+    window.addEventListener('resize', checkScrollState);
+    return () => window.removeEventListener('resize', checkScrollState);
+  }, [checkScrollState, allTags]);
+
+  const handleScrollCategories = (direction: 'left' | 'right') => {
+    if (categoriesContainerRef.current) {
+      categoriesContainerRef.current.scrollBy({
+        left: direction === 'left' ? -220 : 220,
+        behavior: 'smooth'
+      });
+      setTimeout(checkScrollState, 300);
+    }
+  };
 
   const heroRecipe = recipes[0] || INITIAL_RECIPES[0];
 
   return (
     <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="pb-12"
     >
-      <header className="mb-12">
-        <h2 className="text-3xl font-extrabold tracking-tight mb-6">Daily Inspiration</h2>
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[500px]">
+      <header className="mb-8">
+        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-4">Daily Inspiration</h2>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[460px]">
           <div 
             onClick={() => onRecipeClick(heroRecipe.id)}
-            className="md:col-span-8 group relative overflow-hidden rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer"
+            className="md:col-span-8 group relative overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer"
           >
             <img 
               src={heroRecipe.image} 
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               alt="Hero"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            <div className="absolute bottom-0 p-8 w-full">
-              <span className="inline-block px-4 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-xs font-bold mb-4 uppercase tracking-wider">EDITOR'S CHOICE</span>
-              <h3 className="text-white text-4xl font-extrabold mb-2">{heroRecipe.title}</h3>
-              <p className="text-white/80 max-w-md mb-6 leading-relaxed line-clamp-2">{heroRecipe.description}</p>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+            <div className="absolute bottom-0 p-6 md:p-8 w-full">
+              <span className="inline-block px-3.5 py-1 rounded-full bg-emerald-500 text-black text-[11px] font-black mb-3 uppercase tracking-wider">
+                EDITOR'S CHOICE
+              </span>
+              <h3 className="text-white text-3xl md:text-4xl font-extrabold mb-2">{heroRecipe.title}</h3>
+              <p className="text-white/80 max-w-md mb-5 text-sm leading-relaxed line-clamp-2">{heroRecipe.description}</p>
               <div className="flex gap-6">
                 <div className="flex flex-col">
                   <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Calories</span>
-                  <span className="text-white font-bold">{heroRecipe.calories} kcal</span>
+                  <span className="text-white font-bold font-mono text-base">{heroRecipe.calories} kcal</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Protein</span>
-                  <span className="text-white font-bold">{heroRecipe.protein}g</span>
+                  <span className="text-emerald-400 font-bold font-mono text-base">{heroRecipe.protein}g</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Prep Time</span>
-                  <span className="text-white font-bold">{heroRecipe.prepTime} min</span>
+                  <span className="text-white font-bold font-mono text-base">{heroRecipe.prepTime} min</span>
                 </div>
               </div>
             </div>
           </div>
-          <div className="md:col-span-4 grid grid-rows-2 gap-6">
-            {recipes.slice(1, 3).map((item, i) => (
+          <div className="md:col-span-4 grid grid-rows-2 gap-4">
+            {recipes.slice(1, 3).map((item) => (
               <div 
                 key={item.id} 
                 onClick={() => onRecipeClick(item.id)}
-                className="relative overflow-hidden rounded-lg bg-surface-container-lowest group cursor-pointer"
+                className="relative overflow-hidden rounded-2xl bg-surface-container-lowest group cursor-pointer shadow-sm hover:shadow-md transition-all"
               >
                 <img src={item.image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={item.title} />
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" />
-                <div className="absolute inset-0 flex flex-col justify-end p-6">
-                  <h4 className="text-white text-xl font-bold">{item.title}</h4>
-                  <p className="text-white/80 text-sm line-clamp-1">{item.description}</p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent group-hover:bg-black/40 transition-colors" />
+                <div className="absolute inset-0 flex flex-col justify-end p-5">
+                  <h4 className="text-white text-lg font-bold">{item.title}</h4>
+                  <p className="text-white/80 text-xs line-clamp-1 mt-0.5">{item.description}</p>
+                  <div className="flex items-center gap-3 mt-2 text-xs font-mono text-white/70">
+                    <span>{item.calories} kcal</span>
+                    <span>•</span>
+                    <span className="text-emerald-400 font-semibold">{item.protein}g P</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -846,26 +894,120 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
         </div>
       </header>
 
-      <section className="mb-10 flex gap-3 overflow-x-auto no-scrollbar pb-2">
-        {allTags.map((filter) => (
-          <button 
-            key={filter}
-            onClick={() => setSelectedFilter(filter)}
-            className={`px-6 py-2.5 rounded-full font-bold whitespace-nowrap transition-all ${
-              selectedFilter === filter 
-                ? 'bg-primary text-on-primary shadow-sm' 
-                : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
-            }`}
-          >
-            {filter}
-          </button>
-        ))}
-      </section>
+      {/* Sticky Recipe Categories Bar: pins right below TopBar (top-16) as user scrolls */}
+      <div className="sticky top-16 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-2.5 md:py-3 bg-surface/95 backdrop-blur-md border-b border-surface-container/60 shadow-sm transition-all mb-8">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          {/* Scrollable Category Pills with Left/Right Navigation Chevrons */}
+          <div className="relative flex-1 min-w-0 flex items-center">
+            {canScrollLeft && (
+              <button 
+                onClick={() => handleScrollCategories('left')}
+                className="absolute left-0 z-20 p-1.5 rounded-full bg-surface-container-high/95 hover:bg-surface-container-highest shadow-md text-on-surface transition-all -ml-1 md:-ml-2 border border-surface-container"
+                aria-label="Scroll categories left"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {filteredRecipes.map(recipe => (
-          <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} onEdit={onEditRecipe} />
-        ))}
+            <div 
+              ref={categoriesContainerRef}
+              onScroll={checkScrollState}
+              className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 px-1 w-full"
+            >
+              {allTags.map((filter) => {
+                const isSelected = selectedFilter === filter;
+                const count = filter === 'All Recipes' 
+                  ? recipes.length 
+                  : recipes.filter(r => r.tags.includes(filter)).length;
+
+                return (
+                  <button 
+                    key={filter}
+                    aria-label={filter}
+                    onClick={(e) => {
+                      setSelectedFilter(filter);
+                      e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }}
+                    className={`px-5 py-2 rounded-full font-extrabold text-xs uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
+                      isSelected 
+                        ? 'bg-primary text-on-primary shadow-sm scale-100 ring-2 ring-primary/20' 
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                    }`}
+                  >
+                    <span>{filter}</span>
+                    <span 
+                      aria-hidden="true"
+                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full leading-none font-bold ${
+                        isSelected 
+                          ? 'bg-black/20 text-white' 
+                          : 'bg-surface-container-highest text-on-surface-variant'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {canScrollRight && (
+              <button 
+                onClick={() => handleScrollCategories('right')}
+                className="absolute right-0 z-20 p-1.5 rounded-full bg-surface-container-high/95 hover:bg-surface-container-highest shadow-md text-on-surface transition-all -mr-1 md:-mr-2 border border-surface-container"
+                aria-label="Scroll categories right"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Search & Count in Sticky Bar */}
+          <div className="hidden sm:flex items-center gap-2.5 shrink-0">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-on-surface-variant absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search recipes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-7 py-1.5 bg-surface-container-low border border-surface-container rounded-full text-xs text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-primary w-36 md:w-48 transition-all"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-0.5"
+                  title="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            <span className="text-[11px] font-mono text-on-surface-variant font-bold px-2.5 py-1 rounded-full bg-surface-container-low whitespace-nowrap border border-surface-container/60">
+              {filteredRecipes.length} recipes
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {filteredRecipes.length > 0 ? (
+          filteredRecipes.map(recipe => (
+            <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} onEdit={onEditRecipe} />
+          ))
+        ) : (
+          <div className="col-span-full py-16 text-center bg-surface-container-lowest/60 rounded-2xl border border-surface-container">
+            <p className="text-on-surface-variant font-medium">No recipes found matching "{searchQuery || selectedFilter}".</p>
+            <button
+              onClick={() => {
+                setSelectedFilter('All Recipes');
+                setSearchQuery('');
+              }}
+              className="mt-3 text-primary text-xs font-bold hover:underline"
+            >
+              Reset filters
+            </button>
+          </div>
+        )}
       </section>
     </motion.div>
   );

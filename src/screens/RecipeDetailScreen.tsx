@@ -98,7 +98,7 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({ recipe, 
                 <div key={i} className="flex items-center justify-between p-4 bg-surface-lowest rounded-xl border border-surface-container">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-primary/30" />
-                    <span className="font-medium text-on-surface">Ingredient {i + 1}</span>
+                    <span className="font-medium text-on-surface capitalize">{item.name || `Ingredient ${i + 1}`}</span>
                   </div>
                   <span className="font-bold text-on-surface-variant">{item.quantity} {item.unit}</span>
                 </div>

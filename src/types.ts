@@ -18,6 +18,7 @@ export interface Ingredient {
 
 export interface RecipeIngredient {
   ingredientId: string;
+  name?: string;
   quantity: number;
   unit: string;
   notes?: string;

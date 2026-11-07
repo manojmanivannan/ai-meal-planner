@@ -4,10 +4,10 @@ import { BrandLogo } from './BrandLogo';
 
 export const TopBar: React.FC = () => {
   return (
-    <header className="bg-surface sticky top-0 z-40 border-b border-surface-container/50">
-      <div className="flex justify-between items-center w-full px-6 py-3.5 max-w-7xl mx-auto">
+    <header className="bg-surface/95 backdrop-blur-md sticky top-0 z-40 border-b border-surface-container/50 h-16">
+      <div className="flex justify-between items-center w-full h-full px-4 md:px-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
-          <BrandLogo size={38} />
+          <BrandLogo size={36} />
           <div className="flex flex-col">
             <h1 className="text-xl font-extrabold tracking-tight text-on-surface leading-tight">Kitchen Table</h1>
             <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-400">MEAL PLANNER</span>

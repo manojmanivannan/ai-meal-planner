@@ -24,102 +24,57 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.database import Base, async_session, engine
 from backend.models import Ingredient, Recipe, RecipeIngredient, WeeklyPlan
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "etc" / "data"
+BACKEND_DATA_DIR = Path(__file__).resolve().parent / "data"
+ETC_DATA_DIR = Path(__file__).resolve().parent.parent / "etc" / "data"
 
 
-def parse_bool(val: str) -> bool:
-    return val.strip().lower() in ("t", "true", "1", "yes")
+def get_data_dir() -> Path:
+    if BACKEND_DATA_DIR.exists() and (BACKEND_DATA_DIR / "recipes.csv").exists():
+        return BACKEND_DATA_DIR
+    return ETC_DATA_DIR
 
 
-def parse_float(val: str, default: float = 0.0) -> float:
-    try:
-        return float(val.strip()) if val.strip() else default
-    except (ValueError, TypeError):
-        return default
+def infer_category(name: str) -> str:
+    n = name.lower()
+    if any(k in n for k in ['chicken', 'egg', 'fish', 'salmon', 'prawn', 'shrimp', 'protein powder', 'tofu', 'turkey', 'meat', 'beef', 'mutton', 'paneer']):
+        if 'bread' in n:
+            return 'Bakery'
+        return 'Protein'
+    if any(k in n for k in ['milk', 'yogurt', 'curd', 'cheese', 'butter', 'ghee', 'kefir', 'cream']):
+        return 'Dairy'
+    if any(k in n for k in ['bread', 'toast', 'tortilla', 'wrap', 'pastry', 'bun', 'croissant', 'bagel', 'pita']):
+        return 'Bakery'
+    if any(k in n for k in ['rice', 'oat', 'quinoa', 'flour', 'pasta', 'noodle', 'millet', 'ragi', 'aval', 'poha', 'semolina', 'suji', 'wheat', 'spaghetti', 'linguine', 'vermicelli']):
+        return 'Grains'
+    if any(k in n for k in ['cumin', 'pepper', 'turmeric', 'chilli', 'chili', 'cardamom', 'clove', 'cinnamon', 'fenugreek', 'coriander whole', 'mustard', 'asafoetida', 'garam masala', 'fennel', 'bay leaves', 'salt', 'saffron', 'nutmeg', 'paprika', 'oregano', 'thyme', 'spice']):
+        return 'Spices'
+    if any(k in n for k in ['oil', 'vinegar', 'honey', 'seed', 'nut', 'almond', 'walnut', 'cashew', 'lentil', 'dal', 'chickpea', 'bean', 'gram', 'peanut', 'sauce', 'paste', 'sugar', 'jaggery', 'baking', 'hummus', 'tahini']):
+        return 'Pantry'
+    return 'Produce'
 
 
-def parse_int(val: str, default: int = 0) -> int:
-    try:
-        return int(float(val.strip())) if val.strip() else default
-    except (ValueError, TypeError):
-        return default
-
-
-def parse_datetime(val: str):
-    if not val or not val.strip():
-        return None
-    try:
-        return datetime.fromisoformat(val.strip())
-    except (ValueError, TypeError):
-        return None
-
-
-def parse_recipe_ids(val: str) -> list[int]:
-    """Parse PostgreSQL-style array notation like {64} or {65,98} or {}."""
-    val = val.strip().strip('"').strip("'")
-    # Remove braces
-    inner = val.strip("{}")
-    if not inner:
-        return []
-    parts = inner.split(",")
-    result = []
-    for p in parts:
-        p = p.strip()
-        if p:
-            try:
-                result.append(int(float(p)))
-            except (ValueError, TypeError):
-                pass
-    return result
-
-
-def parse_ingredients_json(raw: str) -> list[dict]:
-    """Parse the embedded JSON ingredients from recipes.csv.
-    
-    The CSV uses double-doubled quotes: ""id"" instead of "id".
-    """
-    if not raw or not raw.strip():
-        return []
-
-    raw = raw.strip()
-
-    # The CSV escapes inner quotes by doubling them
-    # Replace "" with " but preserve the outer structure
-    cleaned = raw.replace('""', '"')
-
-    # Sometimes the outer quotes are present
-    if cleaned.startswith('"') and cleaned.endswith('"'):
-        cleaned = cleaned[1:-1]
-
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        # Try wrapping in array if needed
-        try:
-            if not cleaned.startswith("["):
-                cleaned = f"[{cleaned}]"
-            return json.loads(cleaned)
-        except json.JSONDecodeError:
-            print(f"  [WARN] Could not parse ingredients JSON: {raw[:80]}...")
-            return []
-
-
-async def seed_ingredients(session) -> set[int]:
-    """Seed ingredients and return the set of valid ingredient IDs."""
-    csv_path = DATA_DIR / "ingredients.csv"
+async def seed_ingredients(session) -> tuple[set[int], dict[str, int]]:
+    """Seed ingredients and return the set of valid ingredient IDs and a name-to-id mapping."""
+    data_dir = get_data_dir()
+    csv_path = data_dir / "ingredients.csv"
     if not csv_path.exists():
         print(f"  [SKIP] {csv_path} not found")
-        return set()
+        return set(), {}
 
     valid_ids: set[int] = set()
+    name_to_id: dict[str, int] = {}
     count = 0
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             ing_id = parse_int(row.get("id", ""))
+            name = row.get("name", "").strip()
+            raw_cat = (row.get("category") or "").strip()
+            category = raw_cat if raw_cat else infer_category(name)
+
             ing = Ingredient(
                 id=ing_id,
-                name=row.get("name", "").strip(),
+                name=name,
                 shelf_life=parse_int(row.get("shelf_life", ""), 7),
                 available=parse_bool(row.get("available", "f")),
                 last_available=parse_datetime(row.get("last_available", "")),
@@ -136,20 +91,23 @@ async def seed_ingredients(session) -> set[int]:
                 potassium_mg=parse_float(row.get("potassium_mg", "")),
                 sodium_mg=parse_float(row.get("sodium_mg", "")),
                 vitamin_c_mg=parse_float(row.get("vitamin_c_mg", "")),
-                category=row.get("category", "other_miscellaneous").strip(),
+                category=category,
             )
             session.add(ing)
             if ing_id:
                 valid_ids.add(ing_id)
+                if name:
+                    name_to_id[name.lower()] = ing_id
             count += 1
 
     await session.flush()
-    print(f"  ✓ Seeded {count} ingredients")
-    return valid_ids
+    print(f"  ✓ Seeded {count} ingredients from {csv_path}")
+    return valid_ids, name_to_id
 
 
-async def seed_recipes(session, valid_ingredient_ids: set[int]) -> int:
-    csv_path = DATA_DIR / "recipes.csv"
+async def seed_recipes(session, valid_ingredient_ids: set[int], name_to_id: dict[str, int]) -> int:
+    data_dir = get_data_dir()
+    csv_path = data_dir / "recipes.csv"
     if not csv_path.exists():
         print(f"  [SKIP] {csv_path} not found")
         return 0
@@ -190,12 +148,17 @@ async def seed_recipes(session, valid_ingredient_ids: set[int]) -> int:
 
             for ing_data in ingredients_list:
                 raw_id = ing_data.get("id")
-                # Validate FK: set to None if ingredient doesn't exist
-                ingredient_id = int(raw_id) if raw_id and int(raw_id) in valid_ingredient_ids else None
+                ing_name = ing_data.get("name", "unknown")
+                ingredient_id = None
+                if raw_id and int(raw_id) in valid_ingredient_ids:
+                    ingredient_id = int(raw_id)
+                elif ing_name.lower().strip() in name_to_id:
+                    ingredient_id = name_to_id[ing_name.lower().strip()]
+
                 ri = RecipeIngredient(
                     recipe_id=recipe_id,
                     ingredient_id=ingredient_id,
-                    name=ing_data.get("name", "unknown"),
+                    name=ing_name,
                     quantity=parse_float(str(ing_data.get("quantity", 0))),
                     serving_unit=ing_data.get("serving_unit", "g"),
                 )
@@ -204,12 +167,13 @@ async def seed_recipes(session, valid_ingredient_ids: set[int]) -> int:
             count += 1
 
     await session.flush()
-    print(f"  ✓ Seeded {count} recipes (with ingredients)")
+    print(f"  ✓ Seeded {count} recipes (with ingredients) from {csv_path}")
     return count
 
 
 async def seed_weekly_plan(session) -> int:
-    csv_path = DATA_DIR / "weekly_plan.csv"
+    data_dir = get_data_dir()
+    csv_path = data_dir / "weekly_plan.csv"
     if not csv_path.exists():
         print(f"  [SKIP] {csv_path} not found")
         return 0
@@ -249,8 +213,8 @@ async def run_seed():
             # Use raw SQL to allow explicit ID insertion
             await session.execute(text("SET session_replication_role = 'replica';"))
 
-            valid_ingredient_ids = await seed_ingredients(session)
-            await seed_recipes(session, valid_ingredient_ids)
+            valid_ingredient_ids, name_to_id = await seed_ingredients(session)
+            await seed_recipes(session, valid_ingredient_ids, name_to_id)
             await seed_weekly_plan(session)
 
             await session.commit()
