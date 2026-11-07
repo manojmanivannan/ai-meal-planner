@@ -132,11 +132,18 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
       });
     });
 
-    // Macro calorie breakdown for distribution bar: P (4 kcal/g), C (4 kcal/g), F (9 kcal/g)
+    // Macro calorie breakdown for distribution bar: P (4 kcal/g), Net Carbs (4 kcal/g), F (9 kcal/g), Fiber (2 kcal/g)
     const pCal = protein * 4;
-    const cCal = carbs * 4;
+    const netCarbs = Math.max(0, carbs - fiber);
+    const cCal = netCarbs * 4;
     const fCal = fats * 9;
-    const totalMacroCal = pCal + cCal + fCal || 1;
+    const fibCal = fiber * 2;
+    const totalMacroCal = pCal + cCal + fCal + fibCal || 1;
+
+    const rawProtPct = Math.round((pCal / totalMacroCal) * 100);
+    const rawCarbPct = Math.round((cCal / totalMacroCal) * 100);
+    const rawFatPct = Math.round((fCal / totalMacroCal) * 100);
+    const rawFibPct = fiber > 0 ? Math.max(1, Math.round((fibCal / totalMacroCal) * 100)) : 0;
 
     return {
       calories: Math.round(calories),
@@ -146,9 +153,10 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
       fiber: Number(fiber.toFixed(1)),
       filledSlots,
       macroPercentages: {
-        protein: Math.round((pCal / totalMacroCal) * 100),
-        carbs: Math.round((cCal / totalMacroCal) * 100),
-        fat: Math.round((fCal / totalMacroCal) * 100)
+        protein: rawProtPct,
+        carbs: rawCarbPct,
+        fat: rawFatPct,
+        fiber: rawFibPct
       }
     };
   }, [dayPlans, getRecipeById]);
@@ -429,17 +437,22 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
             <div 
               className="bg-emerald-400 h-full transition-all duration-500" 
               style={{ width: `${totals.macroPercentages.protein}%` }} 
-              title={`Protein: ${totals.macroPercentages.protein}%`}
+              title={`Protein: ${totals.macroPercentages.protein}% (${totals.protein}g)`}
             />
             <div 
               className="bg-sky-400 h-full transition-all duration-500" 
               style={{ width: `${totals.macroPercentages.carbs}%` }} 
-              title={`Carbs: ${totals.macroPercentages.carbs}%`}
+              title={`Carbs: ${totals.macroPercentages.carbs}% (${totals.carbs}g)`}
             />
             <div 
               className="bg-rose-400 h-full transition-all duration-500" 
               style={{ width: `${totals.macroPercentages.fat}%` }} 
-              title={`Fat: ${totals.macroPercentages.fat}%`}
+              title={`Fat: ${totals.macroPercentages.fat}% (${totals.fats}g)`}
+            />
+            <div 
+              className="bg-violet-400 h-full transition-all duration-500" 
+              style={{ width: `${totals.macroPercentages.fiber}%` }} 
+              title={`Fiber: ${totals.macroPercentages.fiber}% (${totals.fiber}g)`}
             />
           </div>
         </div>
@@ -558,9 +571,10 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
           </div>
 
           <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden flex">
-            <div className="bg-emerald-400 h-full" style={{ width: `${totals.macroPercentages.protein}%` }} />
-            <div className="bg-sky-400 h-full" style={{ width: `${totals.macroPercentages.carbs}%` }} />
-            <div className="bg-rose-400 h-full" style={{ width: `${totals.macroPercentages.fat}%` }} />
+            <div className="bg-emerald-400 h-full" style={{ width: `${totals.macroPercentages.protein}%` }} title={`Protein: ${totals.protein}g`} />
+            <div className="bg-sky-400 h-full" style={{ width: `${totals.macroPercentages.carbs}%` }} title={`Carbs: ${totals.carbs}g`} />
+            <div className="bg-rose-400 h-full" style={{ width: `${totals.macroPercentages.fat}%` }} title={`Fat: ${totals.fats}g`} />
+            <div className="bg-violet-400 h-full" style={{ width: `${totals.macroPercentages.fiber}%` }} title={`Fiber: ${totals.fiber}g`} />
           </div>
 
           <div className="grid grid-cols-4 gap-1 text-center font-mono text-xs pt-1">

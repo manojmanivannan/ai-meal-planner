@@ -196,17 +196,31 @@ async def seed_weekly_plan(session) -> int:
     return count
 
 
-async def run_seed():
+async def run_seed(force: bool = False):
+    if not force:
+        force = os.getenv("FORCE_SEED", "").lower() in ("1", "true", "yes") or "--force" in sys.argv
+
     print("[seed] Creating database tables...")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     async with async_session() as session:
-        # Check if data already exists
-        result = await session.execute(select(Ingredient).limit(1))
-        if result.scalar_one_or_none() is not None:
-            print("[seed] Database already seeded — skipping.")
-            return
+        if force:
+            print("[seed] Force reseed requested — truncating existing tables...")
+            try:
+                await session.execute(
+                    text("TRUNCATE TABLE recipe_ingredients, weekly_plan, recipes, ingredients RESTART IDENTITY CASCADE;")
+                )
+                await session.commit()
+            except Exception as e:
+                print(f"[seed] Truncate note: {e}")
+                await session.rollback()
+        else:
+            # Check if data already exists
+            result = await session.execute(select(Ingredient).limit(1))
+            if result.scalar_one_or_none() is not None:
+                print("[seed] Database already seeded — skipping.")
+                return
 
         print("[seed] Seeding database from CSV files...")
         try:

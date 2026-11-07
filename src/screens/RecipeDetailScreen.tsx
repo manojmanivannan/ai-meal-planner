@@ -265,9 +265,27 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
                   </span>
                 </div>
                 
-                <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: '45%' }} />
-                </div>
+                {(() => {
+                  const pCal = recipe.protein * 4;
+                  const netCarbs = Math.max(0, recipe.carbs - (recipe.fiber ?? 0));
+                  const cCal = netCarbs * 4;
+                  const fCal = recipe.fats * 9;
+                  const fibCal = (recipe.fiber ?? 0) * 2;
+                  const total = pCal + cCal + fCal + fibCal || 1;
+                  const pPct = Math.round((pCal / total) * 100);
+                  const cPct = Math.round((cCal / total) * 100);
+                  const fPct = Math.round((fCal / total) * 100);
+                  const fibPct = (recipe.fiber ?? 0) > 0 ? Math.max(1, Math.round((fibCal / total) * 100)) : 0;
+
+                  return (
+                    <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden flex">
+                      <div className="bg-blue-400 h-full transition-all duration-500" style={{ width: `${pPct}%` }} title={`Protein: ${pPct}% (${recipe.protein}g)`} />
+                      <div className="bg-green-400 h-full transition-all duration-500" style={{ width: `${cPct}%` }} title={`Carbohydrates: ${cPct}% (${recipe.carbs}g)`} />
+                      <div className="bg-amber-400 h-full transition-all duration-500" style={{ width: `${fPct}%` }} title={`Fats: ${fPct}% (${recipe.fats}g)`} />
+                      <div className="bg-purple-400 h-full transition-all duration-500" style={{ width: `${fibPct}%` }} title={`Fiber: ${fibPct}% (${recipe.fiber ?? 0}g)`} />
+                    </div>
+                  );
+                })()}
 
                 <div className="grid grid-cols-1 gap-3">
                   {[
