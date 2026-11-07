@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Clock, Zap, Edit2, BookOpen, ShoppingBasket, X } from 'lucide-react';
+import { Clock, Zap, Edit2, X } from 'lucide-react';
 import { Recipe } from '../types';
 
 interface RecipeCardProps {
@@ -16,97 +16,33 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
     onEdit?.(recipe.id);
   };
 
-  if (variant === 'hero') {
-    return (
-      <div 
-        onClick={handleClick}
-        className="relative bg-surface-lowest rounded-lg overflow-hidden flex flex-col md:flex-row shadow-sm hover:shadow-md transition-all cursor-pointer group"
-      >
-        <div className="w-full md:w-1/2 h-48 md:h-auto">
-          <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-        </div>
-        <div className="p-6 md:w-1/2 flex flex-col justify-center">
-          <div className="flex items-center gap-2 mb-3">
-            {recipe.tags.map(tag => (
-              <span key={tag} className="bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {tag}
-              </span>
-            ))}
-          </div>
-          <h4 className="font-bold text-2xl mb-2 leading-tight text-primary">{recipe.title}</h4>
-          <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">{recipe.description}</p>
-          <div className="flex gap-4">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-on-surface-variant uppercase">Protein</span>
-              <span className="font-bold text-on-surface">{recipe.protein}g</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-on-surface-variant uppercase">Carbs</span>
-              <span className="font-bold text-on-surface">{recipe.carbs}g</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-on-surface-variant uppercase">Fat</span>
-              <span className="font-bold text-on-surface">{recipe.fats}g</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const serves = recipe.servings || 1;
+  const perServingCal = Math.round(recipe.calories / serves);
+  const perServingProtein = Number((recipe.protein / serves).toFixed(1));
+  const perServingCarbs = Number((recipe.carbs / serves).toFixed(1));
+  const perServingFats = Number((recipe.fats / serves).toFixed(1));
 
   if (variant === 'compact') {
     return (
       <div 
         onClick={handleClick}
-        className="bg-surface-lowest rounded-lg p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all cursor-pointer"
+        className="bg-surface-lowest rounded-xl p-3 flex items-center gap-3 border border-surface-container hover:border-primary/40 transition-all cursor-pointer shadow-2xs group"
       >
-        <div className="w-16 h-16 rounded-full bg-surface-container-high overflow-hidden flex-shrink-0">
-          <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
+        <div className="w-12 h-12 rounded-lg bg-surface-low overflow-hidden shrink-0">
+          <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
         </div>
-        <div className="flex-grow">
-          <h4 className="font-bold text-on-surface">{recipe.title}</h4>
-          <p className="text-xs text-on-surface-variant">{recipe.calories} kcal • {recipe.protein}g protein</p>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-bold text-sm text-on-surface truncate group-hover:text-primary transition-colors">{recipe.title}</h4>
+          <p className="text-xs font-mono text-on-surface-variant tabular-nums">
+            {perServingCal} kcal · <span className="text-emerald-600">{perServingProtein}g P</span>
+          </p>
         </div>
-        <button className="p-1 text-on-surface-variant hover:text-error" onClick={(e) => { e.stopPropagation(); }}>
-          <X className="w-4 h-4" />
+        <button 
+          className="p-1 text-on-surface-variant/40 hover:text-rose-600 transition-colors" 
+          onClick={(e) => { e.stopPropagation(); }}
+        >
+          <X className="w-3.5 h-3.5" />
         </button>
-      </div>
-    );
-  }
-
-  if (variant === 'planner') {
-    return (
-      <div 
-        onClick={handleClick}
-        className="bg-surface-lowest rounded-xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all cursor-pointer group border border-surface-container"
-      >
-        <div className="h-40 relative overflow-hidden">
-          <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-          <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-            <Clock className="w-3 h-3" /> {recipe.prepTime}m
-          </div>
-        </div>
-        <div className="p-5">
-          <h4 className="font-bold text-lg mb-3 leading-tight group-hover:text-primary transition-colors">{recipe.title}</h4>
-          <div className="grid grid-cols-4 gap-2">
-            <div className="text-center bg-surface-container-low rounded-lg py-2">
-              <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Cals</span>
-              <span className="text-sm font-bold">{recipe.calories}</span>
-            </div>
-            <div className="text-center bg-surface-container-low rounded-lg py-2">
-              <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Prot</span>
-              <span className="text-sm font-bold">{recipe.protein}g</span>
-            </div>
-            <div className="text-center bg-surface-container-low rounded-lg py-2">
-              <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Carb</span>
-              <span className="text-sm font-bold">{recipe.carbs}g</span>
-            </div>
-            <div className="text-center bg-surface-container-low rounded-lg py-2">
-              <span className="block text-[8px] font-bold text-on-surface-variant uppercase">Fat</span>
-              <span className="text-sm font-bold">{recipe.fats}g</span>
-            </div>
-          </div>
-        </div>
       </div>
     );
   }
@@ -114,29 +50,60 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, variant = 'full'
   return (
     <div 
       onClick={handleClick}
-      className="bg-surface-lowest rounded-lg overflow-hidden flex flex-col sm:flex-row shadow-sm hover:shadow-md transition-all group cursor-pointer"
+      className="bg-surface-lowest rounded-2xl overflow-hidden border border-surface-container hover:border-primary/40 hover:shadow-sm transition-all duration-200 group cursor-pointer flex flex-col sm:flex-row"
     >
-      <div className="w-full sm:w-40 h-32 relative overflow-hidden">
-        <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+      <div className="w-full sm:w-48 h-40 sm:h-auto relative overflow-hidden shrink-0 bg-surface-low">
+        <img 
+          src={recipe.image} 
+          alt={recipe.title} 
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+        />
+        <div className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          <span>{recipe.prepTime}m</span>
+        </div>
       </div>
-      <div className="p-4 flex flex-col justify-center flex-grow">
-        <div className="flex flex-wrap gap-2 mb-2">
-          {recipe.tags.map(tag => (
-            <span key={tag} className="bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-              {tag}
+
+      <div className="p-4 sm:p-5 flex flex-col justify-between flex-1 min-w-0">
+        <div>
+          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            {recipe.tags.slice(0, 3).map(tag => (
+              <span key={tag} className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary-light/70 px-2 py-0.5 rounded-md">
+                {tag}
+              </span>
+            ))}
+            <span className="text-[11px] text-on-surface-variant/60 font-medium ml-1">
+              · Serves {serves}
             </span>
-          ))}
+          </div>
+
+          <h3 className="font-extrabold text-base sm:text-lg text-on-surface group-hover:text-primary transition-colors leading-snug mb-1.5 truncate">
+            {recipe.title}
+          </h3>
+          <p className="text-xs text-on-surface-variant line-clamp-2 leading-relaxed mb-3">
+            {recipe.description}
+          </p>
         </div>
-        <h4 className="font-bold text-lg mb-1 leading-tight">{recipe.title}</h4>
-        <div className="flex items-center gap-4 text-on-surface-variant text-sm">
-          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {recipe.prepTime} min</span>
-          <span className="flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> {recipe.calories} kcal</span>
+
+        <div className="pt-3 border-t border-surface-container flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 text-xs font-mono tabular-nums">
+            <span className="font-bold text-on-surface">{perServingCal} kcal</span>
+            <span className="text-on-surface-variant/30">·</span>
+            <span className="text-emerald-600 font-semibold">{perServingProtein}g P</span>
+            <span className="text-on-surface-variant/30">·</span>
+            <span className="text-sky-600 font-semibold">{perServingCarbs}g C</span>
+            <span className="text-on-surface-variant/30">·</span>
+            <span className="text-rose-600 font-semibold">{perServingFats}g F</span>
+          </div>
+
+          <button 
+            className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-low rounded-lg transition-colors shrink-0" 
+            onClick={handleEdit}
+            title="Edit Recipe"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
         </div>
-      </div>
-      <div className="p-4 flex items-center justify-center">
-        <button className="p-2 text-on-surface-variant hover:text-primary transition-colors" onClick={handleEdit}>
-          <Edit2 className="w-5 h-5" />
-        </button>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { TopBar, BottomNav } from './components/Navigation';
 import { PlannerScreen, RecipesScreen, IngredientsScreen } from './screens/MainScreens';
 import { EditIngredientScreen } from './screens/EditIngredientScreen';
@@ -41,6 +41,14 @@ export default function App() {
     setCurrentView('main');
   };
 
+  const handleDeleteIngredient = (id: string) => {
+    setIngredients(ingredients.filter(i => i.id !== id));
+    if (selectedIngredient?.id === id) {
+      setSelectedIngredient(undefined);
+    }
+    setCurrentView('main');
+  };
+
   const handleNewRecipe = () => {
     setSelectedRecipe(undefined);
     setCurrentView('create-recipe');
@@ -67,12 +75,12 @@ export default function App() {
         ingredients: recipeData.ingredients || [],
         instructions: recipeData.instructions || [],
         image: recipeData.image || 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=800',
-        calories: recipeData.calories || 0,
-        protein: recipeData.protein || 0,
-        carbs: recipeData.carbs || 0,
-        fats: recipeData.fats || 0,
+        calories: recipeData.calories || 400,
+        protein: recipeData.protein || 25,
+        carbs: recipeData.carbs || 30,
+        fats: recipeData.fats || 15,
       } as Recipe;
-      setRecipes([...recipes, newRecipe]);
+      setRecipes([newRecipe, ...recipes]);
     }
     setCurrentView('main');
   };
@@ -91,97 +99,125 @@ export default function App() {
     }
   };
 
-  const renderMainContent = () => {
-    switch (activeTab) {
-      case 'planner':
-        return (
-          <PlannerScreen 
-            recipes={recipes}
-            onRecipeClick={handleRecipeClick} 
-            onBrowseRecipes={() => setActiveTab('recipes')}
-          />
-        );
-      case 'recipes':
-        return <RecipesScreen recipes={recipes} onRecipeClick={handleRecipeClick} onEditRecipe={handleEditRecipe} />;
-      case 'ingredients':
-        return (
-          <div className="relative">
-            <IngredientsScreen ingredients={ingredients} onEditIngredient={handleEditIngredient} onNewIngredient={handleNewIngredient} />
-            {/* FAB for Ingredients */}
-            <button 
-              onClick={handleNewIngredient}
-              className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg md:hidden active:scale-90 transition-transform"
-            >
-              <span className="text-3xl font-bold">+</span>
-            </button>
-          </div>
-        );
-      default:
-        return <PlannerScreen />;
+  const handleBack = () => {
+    if (currentView === 'edit-recipe' && selectedRecipe) {
+      setCurrentView('recipe-detail');
+    } else {
+      setCurrentView('main');
     }
   };
 
-  if (currentView === 'edit-ingredient') {
-    return (
-      <div className="min-h-screen bg-surface p-6">
-        <EditIngredientScreen 
-          ingredient={selectedIngredient} 
-          onBack={() => setCurrentView('main')} 
-          onSave={handleSaveIngredient}
-        />
-      </div>
-    );
-  }
+  const renderContent = () => {
+    switch (currentView) {
+      case 'edit-ingredient':
+        return (
+          <EditIngredientScreen 
+            ingredient={selectedIngredient} 
+            onBack={handleBack} 
+            onSave={handleSaveIngredient}
+            onDelete={handleDeleteIngredient}
+          />
+        );
 
-  if (currentView === 'create-recipe' || currentView === 'edit-recipe') {
-    return (
-      <div className="min-h-screen bg-surface p-6">
-        <CreateRecipeScreen 
-          recipe={selectedRecipe}
-          onBack={() => {
-            if (currentView === 'edit-recipe' && selectedRecipe) {
-              setCurrentView('recipe-detail');
-            } else {
-              setCurrentView('main');
-            }
-          }} 
-          onSave={handleSaveRecipe}
-          onDelete={handleDeleteRecipe}
-          onAddNewIngredient={handleNewIngredient}
-        />
-      </div>
-    );
-  }
+      case 'create-recipe':
+      case 'edit-recipe':
+        return (
+          <CreateRecipeScreen 
+            recipe={selectedRecipe}
+            onBack={handleBack} 
+            onSave={handleSaveRecipe}
+            onDelete={handleDeleteRecipe}
+            onAddNewIngredient={handleNewIngredient}
+          />
+        );
 
-  if (currentView === 'recipe-detail' && selectedRecipe) {
-    return (
-      <div className="min-h-screen bg-surface">
-        <RecipeDetailScreen 
-          recipe={selectedRecipe} 
-          onBack={() => setCurrentView('main')} 
-          onEdit={() => setCurrentView('edit-recipe')}
-          onDelete={handleDeleteRecipe}
-        />
-      </div>
-    );
-  }
+      case 'recipe-detail':
+        if (!selectedRecipe) return null;
+        return (
+          <RecipeDetailScreen 
+            recipe={selectedRecipe} 
+            onBack={handleBack} 
+            onEdit={() => setCurrentView('edit-recipe')}
+            onDelete={handleDeleteRecipe}
+          />
+        );
+
+      case 'main':
+      default:
+        switch (activeTab) {
+          case 'planner':
+            return (
+              <PlannerScreen 
+                recipes={recipes}
+                onRecipeClick={handleRecipeClick} 
+                onBrowseRecipes={() => setActiveTab('recipes')}
+              />
+            );
+          case 'recipes':
+            return (
+              <RecipesScreen 
+                recipes={recipes} 
+                onRecipeClick={handleRecipeClick} 
+                onEditRecipe={handleEditRecipe} 
+              />
+            );
+          case 'ingredients':
+            return (
+              <IngredientsScreen 
+                ingredients={ingredients} 
+                onEditIngredient={handleEditIngredient} 
+                onNewIngredient={handleNewIngredient} 
+              />
+            );
+          default:
+            return <PlannerScreen onRecipeClick={handleRecipeClick} />;
+        }
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-surface">
-      <TopBar />
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-3 md:pt-4 pb-20">
-        {renderMainContent()}
+    <div className="min-h-screen bg-surface flex flex-col selection:bg-emerald-200 selection:text-emerald-950">
+      {/* Unified Sticky Top Bar Across All Pages */}
+      <TopBar 
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          setCurrentView('main');
+        }}
+        currentView={currentView}
+        pageTitle={
+          currentView === 'recipe-detail' ? selectedRecipe?.title :
+          currentView === 'create-recipe' ? 'Create Recipe' :
+          currentView === 'edit-recipe' ? `Edit: ${selectedRecipe?.title}` :
+          currentView === 'edit-ingredient' ? (selectedIngredient ? `Edit: ${selectedIngredient.name}` : 'New Ingredient') :
+          undefined
+        }
+        onBack={handleBack}
+        onCreateRecipe={handleNewRecipe}
+        onCreateIngredient={handleNewIngredient}
+        onEdit={() => setCurrentView('edit-recipe')}
+        onDelete={() => selectedRecipe && handleDeleteRecipe(selectedRecipe.id)}
+        onSave={() => {
+          if (currentView === 'edit-ingredient') {
+            document.getElementById('save-ingredient-form-btn')?.click();
+          } else if (currentView === 'create-recipe' || currentView === 'edit-recipe') {
+            document.getElementById('save-recipe-form-btn')?.click();
+          }
+        }}
+        saveLabel={
+          currentView === 'edit-ingredient' ? (selectedIngredient ? 'Save Changes' : 'Create Ingredient') :
+          currentView === 'edit-recipe' ? 'Update Recipe' : 'Save Recipe'
+        }
+      />
+
+      {/* Main Responsive Content Viewport */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 pt-5 pb-24">
+        {renderContent()}
       </main>
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      {/* Global FAB for Recipes/Planner */}
-      {activeTab !== 'ingredients' && (
-        <button 
-          onClick={handleNewRecipe}
-          className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-lg md:hidden active:scale-90 transition-transform"
-        >
-          <span className="text-3xl font-bold">+</span>
-        </button>
+
+      {/* Mobile Bottom Navigation (Only visible on mobile and on main views) */}
+      {currentView === 'main' && (
+        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       )}
     </div>
   );

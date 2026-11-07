@@ -4,12 +4,12 @@ import {
   Sunrise, Sun, Moon, Coffee, Plus, 
   Search, Heart, ArrowRight, Sparkles, 
   Clock, Edit2, X, ChevronLeft, ChevronRight,
-  Calendar, LayoutGrid
+  Calendar, LayoutGrid, Check
 } from 'lucide-react';
 import { RecipeCard } from '../components/RecipeCard';
+import { IngredientCard } from '../components/IngredientCard';
 import { INITIAL_RECIPES, INITIAL_INGREDIENTS, LEGACY_RECIPE_ID_MAP } from '../constants';
 import { Recipe, Ingredient } from '../types';
-
 import { RecipePicker } from '../components/RecipePicker';
 
 interface PlannerScreenProps {
@@ -23,18 +23,28 @@ type MealSlot = 'preBreakfast' | 'breakfast' | 'lunch' | 'snack' | 'dinner';
 interface MealSlotConfig {
   key: MealSlot;
   label: string;
+  name: string;
   emoji: string;
 }
 
 const MEAL_SLOTS: MealSlotConfig[] = [
-  { key: 'preBreakfast', label: 'PRE-BREAKFAST', emoji: '🌅' },
-  { key: 'breakfast', label: 'BREAKFAST', emoji: '🍳' },
-  { key: 'lunch', label: 'LUNCH', emoji: '🥗' },
-  { key: 'snack', label: 'SNACK', emoji: '🍎' },
-  { key: 'dinner', label: 'DINNER', emoji: '🍲' },
+  { key: 'preBreakfast', label: 'PRE-BREAKFAST', name: 'Pre-Breakfast', emoji: '🌅' },
+  { key: 'breakfast', label: 'BREAKFAST', name: 'Breakfast', emoji: '🍳' },
+  { key: 'lunch', label: 'LUNCH', name: 'Lunch', emoji: '🥗' },
+  { key: 'snack', label: 'SNACK', name: 'Snack', emoji: '🍎' },
+  { key: 'dinner', label: 'DINNER', name: 'Dinner', emoji: '🍲' },
 ];
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+const DAY_SHORT_MAP: Record<string, string> = {
+  Monday: 'MON',
+  Tuesday: 'TUE',
+  Wednesday: 'WED',
+  Thursday: 'THU',
+  Friday: 'FRI',
+  Saturday: 'SAT',
+  Sunday: 'SUN',
+};
 
 export const PlannerScreen: React.FC<PlannerScreenProps> = ({ 
   onRecipeClick, 
@@ -44,7 +54,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
   const [selectedDay, setSelectedDay] = React.useState<string>('Thursday');
   const [viewMode, setViewMode] = React.useState<'day' | 'week'>('day');
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
-  const [activeSlot, setActiveSlot] = React.useState<{ day: string; slot: MealSlot } | null>(null);
+  const [activeSlot, setActiveSlot] = React.useState<{ day: string; slot: MealSlot; slotLabel: string } | null>(null);
 
   // Initial plan populated from canonical weekly_plan.csv
   const [dayPlans, setDayPlans] = React.useState<Record<string, Record<MealSlot, string[]>>>(() => {
@@ -123,16 +133,16 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
       itemIds.forEach(id => {
         const recipe = getRecipeById(id);
         if (recipe) {
-          calories += recipe.calories;
-          protein += recipe.protein;
-          carbs += recipe.carbs;
-          fats += recipe.fats;
-          fiber += recipe.fiber || 0;
+          const serves = recipe.servings || 1;
+          calories += recipe.calories / serves;
+          protein += recipe.protein / serves;
+          carbs += recipe.carbs / serves;
+          fats += recipe.fats / serves;
+          fiber += (recipe.fiber || 0) / serves;
         }
       });
     });
 
-    // Macro calorie breakdown for distribution bar: P (4 kcal/g), Net Carbs (4 kcal/g), F (9 kcal/g), Fiber (2 kcal/g)
     const pCal = protein * 4;
     const netCarbs = Math.max(0, carbs - fiber);
     const cCal = netCarbs * 4;
@@ -198,8 +208,8 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
     };
   }, [getDayTotals]);
 
-  const handleOpenPicker = (day: string, slot: MealSlot) => {
-    setActiveSlot({ day, slot });
+  const handleOpenPicker = (day: string, slot: MealSlot, slotLabel: string) => {
+    setActiveSlot({ day, slot, slotLabel });
     setIsPickerOpen(true);
   };
 
@@ -246,69 +256,12 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
     window.print();
   };
 
-  // Day theme styling map matching screenshots
-  const getDayTheme = (day: string) => {
-    const isToday = day === 'Thursday';
-    switch (day) {
-      case 'Monday':
-        return {
-          dotColor: 'bg-indigo-400',
-          borderColor: 'border-indigo-500/30',
-          activeBg: 'bg-indigo-500/10 text-indigo-300',
-          isToday: false
-        };
-      case 'Tuesday':
-        return {
-          dotColor: 'bg-sky-400',
-          borderColor: 'border-sky-500/30',
-          activeBg: 'bg-sky-500/10 text-sky-300',
-          isToday: false
-        };
-      case 'Wednesday':
-        return {
-          dotColor: 'bg-emerald-400',
-          borderColor: 'border-emerald-500/30',
-          activeBg: 'bg-emerald-500/10 text-emerald-300',
-          isToday: false
-        };
-      case 'Thursday':
-        return {
-          dotColor: 'bg-amber-400',
-          borderColor: 'border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.15)] ring-1 ring-amber-400/40',
-          activeBg: 'bg-amber-500/10 text-amber-300',
-          isToday: true
-        };
-      case 'Friday':
-        return {
-          dotColor: 'bg-rose-400',
-          borderColor: 'border-rose-500/30',
-          activeBg: 'bg-rose-500/10 text-rose-300',
-          isToday: false
-        };
-      case 'Saturday':
-        return {
-          dotColor: 'bg-violet-400',
-          borderColor: 'border-violet-500/30',
-          activeBg: 'bg-violet-500/10 text-violet-300',
-          isToday: false
-        };
-      case 'Sunday':
-      default:
-        return {
-          dotColor: 'bg-orange-400',
-          borderColor: 'border-orange-500/30',
-          activeBg: 'bg-orange-500/10 text-orange-300',
-          isToday: false
-        };
-    }
-  };
-
   // Render meal slots list for a day
   const renderMealSlotsContent = (day: string) => {
     const plan = dayPlans[day] || { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] };
 
     return (
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {MEAL_SLOTS.map((slotConfig) => {
           const itemIds = plan[slotConfig.key] || [];
           const hasItems = itemIds.length > 0;
@@ -316,25 +269,26 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
           return (
             <div key={slotConfig.key} className="space-y-1.5">
               {/* Slot Title & Actions */}
-              <div className="flex items-center justify-between text-[11px] font-bold text-on-surface-variant">
+              <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant">
                 <div className="flex items-center gap-1.5 uppercase tracking-wider">
                   <span>{slotConfig.emoji}</span>
-                  <span>{slotConfig.label}</span>
+                  <span className="font-extrabold text-on-surface text-[11px]">{slotConfig.label}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {hasItems && (
                     <button
                       onClick={() => handleClearSlot(day, slotConfig.key)}
-                      className="hover:text-error transition-colors text-[10px] uppercase font-semibold"
+                      className="text-on-surface-variant hover:text-rose-600 transition-colors text-[10px] uppercase font-bold"
                     >
                       Clear
                     </button>
                   )}
                   <button
-                    onClick={() => handleOpenPicker(day, slotConfig.key)}
-                    className="text-primary hover:underline transition-colors flex items-center gap-0.5 text-[10px] uppercase font-bold"
+                    onClick={() => handleOpenPicker(day, slotConfig.key, slotConfig.name)}
+                    aria-label={`Add ${slotConfig.name}`}
+                    className="text-primary hover:text-primary-hover font-bold flex items-center gap-0.5 text-[11px] uppercase cursor-pointer"
                   >
-                    + Add
+                    + Add {hasItems ? 'Another' : slotConfig.name}
                   </button>
                 </div>
               </div>
@@ -346,17 +300,23 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
                     const recipe = getRecipeById(recipeId);
                     if (!recipe) return null;
 
+                    const serves = recipe.servings || 1;
+                    const cal = Math.round(recipe.calories / serves);
+                    const prot = (recipe.protein / serves).toFixed(1);
+                    const carbs = (recipe.carbs / serves).toFixed(1);
+                    const fats = (recipe.fats / serves).toFixed(1);
+
                     return (
                       <div
                         key={`${recipeId}-${idx}`}
-                        className="bg-surface-container-low/70 hover:bg-surface-container-low border border-surface-container/60 rounded-xl p-2.5 transition-all group"
+                        className="bg-surface-low hover:bg-surface-container border border-surface-container rounded-xl p-2.5 transition-all group shadow-2xs"
                       >
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <div
                             onClick={() => onRecipeClick(recipe.id)}
-                            className="flex items-center gap-2 cursor-pointer flex-grow min-w-0"
+                            className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
                           >
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${recipe.calories < 150 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                            <span className="w-2 h-2 rounded-full shrink-0 bg-primary" />
                             <span className="font-bold text-sm text-on-surface hover:text-primary transition-colors truncate">
                               {recipe.title}
                             </span>
@@ -366,22 +326,28 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
                               e.stopPropagation();
                               handleRemoveItem(day, slotConfig.key, idx);
                             }}
-                            className="text-on-surface-variant/40 hover:text-error p-0.5 rounded transition-colors shrink-0"
+                            aria-label="Remove"
                             title="Remove item"
+                            className="text-on-surface-variant hover:text-rose-600 p-1 rounded-md transition-colors shrink-0"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
 
-                        {/* Macro Telemetry: kcal • P • C • F */}
+                        {/* Macro Telemetry: kcal • P • C • F per serving */}
                         <div className="flex items-center gap-1.5 text-xs font-mono tabular-nums text-on-surface-variant pl-4 flex-wrap">
-                          <span className="font-bold text-on-surface">{recipe.calories} kcal</span>
-                          <span className="opacity-30">•</span>
-                          <span className="text-emerald-500 font-semibold">{recipe.protein}g P</span>
-                          <span className="opacity-30">•</span>
-                          <span className="text-sky-500 font-semibold">{recipe.carbs}g C</span>
-                          <span className="opacity-30">•</span>
-                          <span className="text-rose-500 font-semibold">{recipe.fats}g F</span>
+                          <span className="font-bold text-on-surface">{cal} kcal</span>
+                          <span className="opacity-30">·</span>
+                          <span className="text-emerald-600 font-semibold">{prot}g P</span>
+                          <span className="opacity-30">·</span>
+                          <span className="text-sky-600 font-semibold">{carbs}g C</span>
+                          <span className="opacity-30">·</span>
+                          <span className="text-rose-600 font-semibold">{fats}g F</span>
+                          {serves > 1 && (
+                            <span className="text-[10px] text-on-surface-variant/70 font-sans ml-1">
+                              (serves {serves})
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
@@ -389,11 +355,12 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
                 </div>
               ) : (
                 <button
-                  onClick={() => handleOpenPicker(day, slotConfig.key)}
-                  className="w-full py-2 px-3 rounded-xl border border-dashed border-surface-container-highest/60 hover:border-primary/50 bg-surface-container-lowest/40 hover:bg-surface-container-low/50 text-on-surface-variant/70 hover:text-primary transition-all text-xs font-semibold flex items-center justify-center gap-1.5"
+                  onClick={() => handleOpenPicker(day, slotConfig.key, slotConfig.name)}
+                  aria-label={`Add ${slotConfig.name}`}
+                  className="w-full py-2.5 px-3 rounded-xl border border-dashed border-surface-container hover:border-primary/50 bg-surface-lowest hover:bg-surface-low text-on-surface-variant hover:text-primary transition-all text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Assign {slotConfig.label.toLowerCase()}</span>
+                  <span>Add {slotConfig.name}</span>
                 </button>
               )}
             </div>
@@ -409,12 +376,12 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
     const plan = dayPlans[day] || { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] };
 
     return (
-      <div className="bg-surface-lowest/95 backdrop-blur-md rounded-2xl p-4 border border-surface-container/70 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-surface-container/60">
-          <span className="text-[10px] font-bold tracking-wider text-on-surface-variant uppercase">
+      <div className="bg-surface-lowest rounded-2xl p-5 border border-surface-container shadow-2xs space-y-4">
+        <div className="flex items-center justify-between pb-2.5 border-b border-surface-container">
+          <span className="text-xs font-bold tracking-wider text-on-surface-variant uppercase">
             Daily Nutrition ({day})
           </span>
-          <span className="text-xs font-mono font-bold text-on-surface-variant">
+          <span className="text-xs font-mono font-bold text-on-surface-variant bg-surface-low px-2 py-0.5 rounded-md">
             {totals.filledSlots}/5 Slots
           </span>
         </div>
@@ -433,69 +400,69 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
             </div>
           </div>
 
-          <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden flex">
+          <div className="h-2 w-full bg-surface-low rounded-full overflow-hidden flex border border-surface-container/50">
             <div 
-              className="bg-emerald-400 h-full transition-all duration-500" 
+              className="bg-emerald-500 h-full transition-all duration-500" 
               style={{ width: `${totals.macroPercentages.protein}%` }} 
               title={`Protein: ${totals.macroPercentages.protein}% (${totals.protein}g)`}
             />
             <div 
-              className="bg-sky-400 h-full transition-all duration-500" 
+              className="bg-sky-500 h-full transition-all duration-500" 
               style={{ width: `${totals.macroPercentages.carbs}%` }} 
               title={`Carbs: ${totals.macroPercentages.carbs}% (${totals.carbs}g)`}
             />
             <div 
-              className="bg-rose-400 h-full transition-all duration-500" 
+              className="bg-rose-500 h-full transition-all duration-500" 
               style={{ width: `${totals.macroPercentages.fat}%` }} 
               title={`Fat: ${totals.macroPercentages.fat}% (${totals.fats}g)`}
             />
             <div 
-              className="bg-violet-400 h-full transition-all duration-500" 
+              className="bg-violet-500 h-full transition-all duration-500" 
               style={{ width: `${totals.macroPercentages.fiber}%` }} 
               title={`Fiber: ${totals.macroPercentages.fiber}% (${totals.fiber}g)`}
             />
           </div>
         </div>
 
-        {/* 4 Macro KPI tiles */}
+        {/* 4 Macro KPI tiles with uniform palette */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
-            <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
+          <div className="bg-surface-low rounded-xl p-2.5 border border-surface-container/40">
+            <span className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
               PROTEIN
             </span>
-            <span className="text-sm font-black font-mono text-emerald-500 tabular-nums">
+            <span className="text-base font-black font-mono text-emerald-600 tabular-nums">
               {totals.protein}g
             </span>
           </div>
-          <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
-            <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
+          <div className="bg-surface-low rounded-xl p-2.5 border border-surface-container/40">
+            <span className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
               CARBS
             </span>
-            <span className="text-sm font-black font-mono text-sky-500 tabular-nums">
+            <span className="text-base font-black font-mono text-sky-600 tabular-nums">
               {totals.carbs}g
             </span>
           </div>
-          <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
-            <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
+          <div className="bg-surface-low rounded-xl p-2.5 border border-surface-container/40">
+            <span className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
               FAT
             </span>
-            <span className="text-sm font-black font-mono text-rose-500 tabular-nums">
+            <span className="text-base font-black font-mono text-rose-600 tabular-nums">
               {totals.fats}g
             </span>
           </div>
-          <div className="bg-surface-container-low/70 rounded-xl p-2.5 border border-surface-container/40">
-            <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
+          <div className="bg-surface-low rounded-xl p-2.5 border border-surface-container/40">
+            <span className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-0.5">
               FIBER
             </span>
-            <span className="text-sm font-black font-mono text-violet-500 tabular-nums">
+            <span className="text-base font-black font-mono text-violet-600 tabular-nums">
               {totals.fiber}g
             </span>
           </div>
         </div>
 
         {/* Slot-by-Slot Calorie Breakdown */}
-        <div className="pt-2 border-t border-surface-container/60 space-y-1.5 text-xs">
-          <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">
+        <div className="pt-2 border-t border-surface-container space-y-1.5 text-xs">
+          <span className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">
             Energy by Meal Slot
           </span>
           {MEAL_SLOTS.map(slot => {
@@ -503,14 +470,17 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
             let slotCal = 0;
             itemIds.forEach(id => {
               const r = getRecipeById(id);
-              if (r) slotCal += r.calories;
+              if (r) {
+                const serves = r.servings || 1;
+                slotCal += Math.round(r.calories / serves);
+              }
             });
 
             return (
               <div key={slot.key} className="flex justify-between items-center text-on-surface-variant">
                 <span className="flex items-center gap-1.5">
                   <span>{slot.emoji}</span>
-                  <span className="text-[11px]">{slot.label}</span>
+                  <span className="text-xs font-medium">{slot.name}</span>
                 </span>
                 <span className="font-mono font-bold text-on-surface tabular-nums">
                   {slotCal > 0 ? `${slotCal} kcal` : '—'}
@@ -526,28 +496,28 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
   // Render a single Day Column Card (for 7-Day Board View)
   const renderDayCard = (day: string) => {
     const totals = getDayTotals(day);
-    const theme = getDayTheme(day);
+    const isToday = day === 'Thursday';
 
     return (
       <div 
         key={day}
-        className={`bg-surface-lowest/95 backdrop-blur-md rounded-2xl p-4 flex flex-col justify-between border transition-all duration-300 w-[290px] shrink-0 ${
-          theme.borderColor
+        className={`bg-surface-lowest rounded-2xl p-4 flex flex-col justify-between border transition-all duration-200 w-[290px] shrink-0 shadow-2xs ${
+          isToday ? 'border-primary ring-1 ring-primary/30' : 'border-surface-container'
         }`}
       >
         <div>
           {/* Header */}
-          <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-surface-container/60">
+          <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-surface-container">
             <div className="flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full ${theme.dotColor}`} />
+              <span className={`w-2.5 h-2.5 rounded-full ${isToday ? 'bg-primary' : 'bg-on-surface-variant/40'}`} />
               <h3 className="font-extrabold text-base text-on-surface">{day}</h3>
-              {theme.isToday && (
-                <span className="bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wider uppercase">
+              {isToday && (
+                <span className="bg-primary-light text-primary text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
                   TODAY
                 </span>
               )}
             </div>
-            <span className="bg-surface-container-high text-on-surface-variant font-mono text-xs font-bold px-2 py-0.5 rounded-md tabular-nums">
+            <span className="bg-surface-low text-on-surface-variant font-mono text-xs font-bold px-2 py-0.5 rounded-md tabular-nums">
               {totals.filledSlots}/5
             </span>
           </div>
@@ -557,7 +527,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="mt-4 pt-3 border-t border-surface-container/60 space-y-2">
+        <div className="mt-4 pt-3 border-t border-surface-container space-y-2">
           <div className="flex items-baseline justify-between">
             <span className="text-[10px] font-bold tracking-wider text-on-surface-variant uppercase">
               DAILY TOTAL
@@ -570,29 +540,29 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
             </div>
           </div>
 
-          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden flex">
-            <div className="bg-emerald-400 h-full" style={{ width: `${totals.macroPercentages.protein}%` }} title={`Protein: ${totals.protein}g`} />
-            <div className="bg-sky-400 h-full" style={{ width: `${totals.macroPercentages.carbs}%` }} title={`Carbs: ${totals.carbs}g`} />
-            <div className="bg-rose-400 h-full" style={{ width: `${totals.macroPercentages.fat}%` }} title={`Fat: ${totals.fats}g`} />
-            <div className="bg-violet-400 h-full" style={{ width: `${totals.macroPercentages.fiber}%` }} title={`Fiber: ${totals.fiber}g`} />
+          <div className="h-1.5 w-full bg-surface-low rounded-full overflow-hidden flex">
+            <div className="bg-emerald-500 h-full" style={{ width: `${totals.macroPercentages.protein}%` }} title={`Protein: ${totals.protein}g`} />
+            <div className="bg-sky-500 h-full" style={{ width: `${totals.macroPercentages.carbs}%` }} title={`Carbs: ${totals.carbs}g`} />
+            <div className="bg-rose-500 h-full" style={{ width: `${totals.macroPercentages.fat}%` }} title={`Fat: ${totals.fats}g`} />
+            <div className="bg-violet-500 h-full" style={{ width: `${totals.macroPercentages.fiber}%` }} title={`Fiber: ${totals.fiber}g`} />
           </div>
 
           <div className="grid grid-cols-4 gap-1 text-center font-mono text-xs pt-1">
-            <div className="bg-surface-container-low/70 rounded p-1">
+            <div className="bg-surface-low rounded p-1">
               <span className="block text-[8px] font-bold text-on-surface-variant">P</span>
-              <span className="text-emerald-500 font-bold">{totals.protein}g</span>
+              <span className="text-emerald-600 font-bold">{totals.protein}g</span>
             </div>
-            <div className="bg-surface-container-low/70 rounded p-1">
+            <div className="bg-surface-low rounded p-1">
               <span className="block text-[8px] font-bold text-on-surface-variant">C</span>
-              <span className="text-sky-500 font-bold">{totals.carbs}g</span>
+              <span className="text-sky-600 font-bold">{totals.carbs}g</span>
             </div>
-            <div className="bg-surface-container-low/70 rounded p-1">
+            <div className="bg-surface-low rounded p-1">
               <span className="block text-[8px] font-bold text-on-surface-variant">F</span>
-              <span className="text-rose-500 font-bold">{totals.fats}g</span>
+              <span className="text-rose-600 font-bold">{totals.fats}g</span>
             </div>
-            <div className="bg-surface-container-low/70 rounded p-1">
+            <div className="bg-surface-low rounded p-1">
               <span className="block text-[8px] font-bold text-on-surface-variant">Fib</span>
-              <span className="text-violet-500 font-bold">{totals.fiber}g</span>
+              <span className="text-violet-600 font-bold">{totals.fiber}g</span>
             </div>
           </div>
         </div>
@@ -603,63 +573,39 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
   const currentDayIndex = DAYS_OF_WEEK.indexOf(selectedDay as any);
   const prevDay = DAYS_OF_WEEK[(currentDayIndex - 1 + DAYS_OF_WEEK.length) % DAYS_OF_WEEK.length];
   const nextDay = DAYS_OF_WEEK[(currentDayIndex + 1) % DAYS_OF_WEEK.length];
-  const selectedTheme = getDayTheme(selectedDay);
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="pb-10 space-y-3"
+      transition={{ duration: 0.2 }}
+      className="space-y-4 pb-12"
     >
-      {/* Tight Top Control Header (Single row ~40px) */}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl md:text-2xl font-black tracking-tight text-on-surface">
-            Meal Schedule & Macros
-          </h1>
-          <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/25">
-            {weeklyAnalytics.plannedPercent}% Planned ({weeklyAnalytics.plannedCount}/{weeklyAnalytics.totalSlots})
-          </span>
+      {/* Top Section Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-surface-container">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-on-surface">
+              Weekly Planner
+            </h1>
+            <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-primary-light text-primary border border-primary/20">
+              {weeklyAnalytics.plannedPercent}% Planned ({weeklyAnalytics.plannedCount}/{weeklyAnalytics.totalSlots})
+            </span>
+          </div>
+          <p className="text-xs text-on-surface-variant mt-0.5">
+            Organize daily meals and track macro balance across the full week.
+          </p>
         </div>
 
-        {/* Center / Implied Day Navigation in Day Focus View */}
-        {viewMode === 'day' && (
-          <div className="flex items-center p-1 bg-surface-container-low rounded-xl border border-surface-container gap-1">
-            {DAYS_OF_WEEK.map(d => {
-              const isSelected = selectedDay === d;
-              const isToday = d === 'Thursday';
-              const dTotals = getDayTotals(d);
-
-              return (
-                <button
-                  key={d}
-                  onClick={() => setSelectedDay(d)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    isSelected 
-                      ? 'bg-primary text-on-primary shadow-sm' 
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  <span>{d.slice(0, 3)}</span>
-                  {isToday && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-amber-400'}`} />
-                  )}
-                  <span className="opacity-60 text-[10px] font-mono">{dTotals.filledSlots}/5</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Right Action Controls */}
+        {/* Action Controls */}
         <div className="flex items-center gap-2">
           {/* View mode toggle: Day Focus vs 7-Day Board */}
-          <div className="flex items-center p-1 bg-surface-container-low rounded-xl border border-surface-container">
+          <div className="flex items-center p-1 bg-surface-low rounded-xl border border-surface-container">
             <button
               onClick={() => setViewMode('day')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewMode === 'day' 
-                  ? 'bg-primary text-on-primary shadow-sm' 
+                  ? 'bg-surface-lowest text-primary shadow-2xs' 
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
@@ -667,9 +613,9 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
             </button>
             <button
               onClick={() => setViewMode('week')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewMode === 'week' 
-                  ? 'bg-primary text-on-primary shadow-sm' 
+                  ? 'bg-surface-lowest text-primary shadow-2xs' 
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
@@ -679,35 +625,69 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
 
           <button
             onClick={handleExportPDF}
-            className="px-3 py-1.5 bg-surface-container-low hover:bg-surface-container rounded-xl text-on-surface text-xs font-bold transition-colors border border-surface-container"
+            className="px-3.5 py-1.5 bg-surface-low hover:bg-surface-container rounded-xl text-on-surface text-xs font-bold transition-colors border border-surface-container cursor-pointer"
           >
             Export PDF
           </button>
           {onBrowseRecipes && (
             <button
               onClick={onBrowseRecipes}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary text-on-primary rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-md"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Browse Recipes</span>
             </button>
           )}
         </div>
-      </header>
+      </div>
 
-      {/* Slim Weekly Nutrition HUD Strip (~34px height) */}
-      <section className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-surface-lowest/90 backdrop-blur-md rounded-xl border border-surface-container/60 text-xs">
+      {/* Center Day Navigation in Day Focus View (Matches MON, TUE, WED...) */}
+      {viewMode === 'day' && (
+        <div className="flex items-center p-1.5 bg-surface-lowest rounded-2xl border border-surface-container gap-1 overflow-x-auto no-scrollbar shadow-2xs">
+          {DAYS_OF_WEEK.map(d => {
+            const isSelected = selectedDay === d;
+            const isToday = d === 'Thursday';
+            const shortCode = DAY_SHORT_MAP[d];
+            const dTotals = getDayTotals(d);
+
+            return (
+              <button
+                key={d}
+                onClick={() => setSelectedDay(d)}
+                className={`flex-1 min-w-[72px] py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                  isSelected 
+                    ? 'bg-primary text-white shadow-2xs scale-[1.02]' 
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-low'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <span>{shortCode}</span>
+                  {isToday && (
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-amber-400'}`} />
+                  )}
+                </div>
+                <span className={`text-[10px] font-mono ${isSelected ? 'text-white/80' : 'text-on-surface-variant/70'}`}>
+                  {dTotals.filledSlots}/5
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Slim Weekly Nutrition HUD Strip */}
+      <section className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-surface-lowest rounded-xl border border-surface-container text-xs shadow-2xs">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Weekly Daily Avg:</span>
           <span className="font-mono font-bold text-on-surface">{weeklyAnalytics.avgDailyCal} kcal</span>
-          <span className="opacity-30">•</span>
-          <span className="font-mono text-emerald-500 font-semibold">{weeklyAnalytics.avgDailyProtein}g Prot</span>
-          <span className="opacity-30">•</span>
-          <span className="font-mono text-sky-500 font-semibold">{weeklyAnalytics.avgDailyCarbs}g Carb</span>
-          <span className="opacity-30">•</span>
-          <span className="font-mono text-rose-500 font-semibold">{weeklyAnalytics.avgDailyFat}g Fat</span>
-          <span className="opacity-30">•</span>
-          <span className="font-mono text-violet-500 font-semibold">{weeklyAnalytics.avgDailyFiber}g Fib</span>
+          <span className="opacity-30">·</span>
+          <span className="font-mono text-emerald-600 font-semibold">{weeklyAnalytics.avgDailyProtein}g Prot</span>
+          <span className="opacity-30">·</span>
+          <span className="font-mono text-sky-600 font-semibold">{weeklyAnalytics.avgDailyCarbs}g Carb</span>
+          <span className="opacity-30">·</span>
+          <span className="font-mono text-rose-600 font-semibold">{weeklyAnalytics.avgDailyFat}g Fat</span>
+          <span className="opacity-30">·</span>
+          <span className="font-mono text-violet-600 font-semibold">{weeklyAnalytics.avgDailyFiber}g Fib</span>
         </div>
         <div className="hidden sm:flex items-center gap-4 text-on-surface-variant font-mono text-xs">
           <span>Week Total: {weeklyAnalytics.totalCal.toLocaleString()} kcal</span>
@@ -718,50 +698,48 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
 
       {/* Main Viewport Content */}
       {viewMode === 'day' ? (
-        /* Day Focus View: Side-by-side Master/Detail (Left: Meal Slots, Right: Nutrition Card) */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Column: 5 Meal Slots */}
-          <div className="lg:col-span-8 bg-surface-lowest/95 backdrop-blur-md rounded-2xl p-5 border border-surface-container/70 shadow-sm">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-surface-container/60">
-              <div className="flex items-center gap-3">
+          <div className="lg:col-span-8 bg-surface-lowest rounded-2xl p-5 border border-surface-container shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedDay(prevDay)}
-                  className="p-1 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                  className="p-1 rounded-lg hover:bg-surface-low transition-colors text-on-surface-variant cursor-pointer"
                   title={`Previous: ${prevDay}`}
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div className="flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full ${selectedTheme.dotColor}`} />
                   <h2 className="text-xl font-black text-on-surface">{selectedDay}</h2>
-                  {selectedTheme.isToday && (
-                    <span className="bg-amber-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  {selectedDay === 'Thursday' && (
+                    <span className="bg-primary-light text-primary text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
                       TODAY
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() => setSelectedDay(nextDay)}
-                  className="p-1 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                  className="p-1 rounded-lg hover:bg-surface-low transition-colors text-on-surface-variant cursor-pointer"
                   title={`Next: ${nextDay}`}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
-              <span className="text-xs font-mono font-bold bg-surface-container-high text-on-surface-variant px-2.5 py-1 rounded-lg">
+              <span className="text-xs font-mono font-bold bg-surface-low text-on-surface-variant px-2.5 py-1 rounded-lg border border-surface-container/60">
                 {getDayTotals(selectedDay).filledSlots}/5 Slots Planned
               </span>
             </div>
             {renderMealSlotsContent(selectedDay)}
           </div>
 
-          {/* Right Column: Sticky Daily Nutrition Summary (Always visible above the fold!) */}
-          <div className="lg:col-span-4 sticky top-16">
+          {/* Right Column: Sticky Daily Nutrition Summary */}
+          <div className="lg:col-span-4 sticky top-20">
             {renderNutritionSummaryCard(selectedDay)}
           </div>
         </div>
       ) : (
-        /* 7-Day Board View: Horizontal board with compact cards */
+        /* 7-Day Board View */
         <div className="overflow-x-auto no-scrollbar pb-6 pt-1">
           <div className="flex gap-4 min-w-[1400px]">
             {DAYS_OF_WEEK.map((day) => renderDayCard(day))}
@@ -775,7 +753,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
         onClose={() => setIsPickerOpen(false)}
         onSelect={handleSelectRecipe}
         recipes={recipes}
-        title={`Add to ${activeSlot?.day} ${activeSlot ? MEAL_SLOTS.find(s => s.key === activeSlot.slot)?.label : 'Meal'}`}
+        title={activeSlot ? `Select ${activeSlot.slotLabel}` : 'Select Recipe'}
       />
     </motion.div>
   );
@@ -845,61 +823,86 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
 
   return (
     <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="pb-12"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="space-y-6 pb-16"
     >
-      <header className="mb-8">
-        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-4">Daily Inspiration</h2>
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[460px]">
+      {/* Hero Media Inspiration Section */}
+      <header>
+        <div className="flex items-center justify-between pb-3 border-b border-surface-container mb-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black text-on-surface tracking-tight">
+              Daily Inspiration
+            </h1>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Explore chef-tested recipes balanced for energy, protein, and dietary goals.
+            </p>
+          </div>
+          <span className="text-xs font-mono font-bold text-on-surface-variant bg-surface-low px-2.5 py-1 rounded-lg border border-surface-container/60">
+            {recipes.length} Total Recipes
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-auto md:h-[420px]">
+          {/* Main Hero Card */}
           <div 
             onClick={() => onRecipeClick(heroRecipe.id)}
-            className="md:col-span-8 group relative overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all cursor-pointer"
+            className="md:col-span-8 group relative overflow-hidden rounded-2xl bg-surface-low border border-surface-container shadow-2xs hover:shadow-md transition-all cursor-pointer"
           >
             <img 
               src={heroRecipe.image} 
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               alt="Hero"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
             <div className="absolute bottom-0 p-6 md:p-8 w-full">
-              <span className="inline-block px-3.5 py-1 rounded-full bg-emerald-500 text-black text-[11px] font-black mb-3 uppercase tracking-wider">
+              <span className="inline-block px-3 py-1 rounded-lg bg-primary text-white text-[10px] font-black mb-2 uppercase tracking-wider shadow-xs">
                 EDITOR'S CHOICE
               </span>
-              <h3 className="text-white text-3xl md:text-4xl font-extrabold mb-2">{heroRecipe.title}</h3>
-              <p className="text-white/80 max-w-md mb-5 text-sm leading-relaxed line-clamp-2">{heroRecipe.description}</p>
-              <div className="flex gap-6">
-                <div className="flex flex-col">
-                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Calories</span>
-                  <span className="text-white font-bold font-mono text-base">{heroRecipe.calories} kcal</span>
+              <h2 className="text-white text-2xl md:text-3xl font-black mb-2 tracking-tight">
+                {heroRecipe.title}
+              </h2>
+              <p className="text-white/80 max-w-lg mb-4 text-xs sm:text-sm leading-relaxed line-clamp-2">
+                {heroRecipe.description}
+              </p>
+              <div className="flex items-center gap-6 text-white text-xs font-mono">
+                <div>
+                  <span className="block text-white/60 text-[9px] font-bold uppercase">Calories</span>
+                  <span className="font-bold text-sm">
+                    {Math.round(heroRecipe.calories / (heroRecipe.servings || 1))} kcal
+                  </span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Protein</span>
-                  <span className="text-emerald-400 font-bold font-mono text-base">{heroRecipe.protein}g</span>
+                <div>
+                  <span className="block text-white/60 text-[9px] font-bold uppercase">Protein</span>
+                  <span className="text-emerald-400 font-bold text-sm">
+                    {(heroRecipe.protein / (heroRecipe.servings || 1)).toFixed(1)}g
+                  </span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Prep Time</span>
-                  <span className="text-white font-bold font-mono text-base">{heroRecipe.prepTime} min</span>
+                <div>
+                  <span className="block text-white/60 text-[9px] font-bold uppercase">Prep Time</span>
+                  <span className="font-bold text-sm">{heroRecipe.prepTime} min</span>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Secondary Hero Side Cards */}
           <div className="md:col-span-4 grid grid-rows-2 gap-4">
             {recipes.slice(1, 3).map((item) => (
               <div 
                 key={item.id} 
                 onClick={() => onRecipeClick(item.id)}
-                className="relative overflow-hidden rounded-2xl bg-surface-container-lowest group cursor-pointer shadow-sm hover:shadow-md transition-all"
+                className="relative overflow-hidden rounded-2xl bg-surface-low border border-surface-container group cursor-pointer shadow-2xs hover:shadow-md transition-all"
               >
-                <img src={item.image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={item.title} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent group-hover:bg-black/40 transition-colors" />
-                <div className="absolute inset-0 flex flex-col justify-end p-5">
-                  <h4 className="text-white text-lg font-bold">{item.title}</h4>
-                  <p className="text-white/80 text-xs line-clamp-1 mt-0.5">{item.description}</p>
-                  <div className="flex items-center gap-3 mt-2 text-xs font-mono text-white/70">
-                    <span>{item.calories} kcal</span>
-                    <span>•</span>
-                    <span className="text-emerald-400 font-semibold">{item.protein}g P</span>
+                <img src={item.image} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.title} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent group-hover:bg-black/40 transition-colors" />
+                <div className="absolute inset-0 flex flex-col justify-end p-4">
+                  <h4 className="text-white text-base font-bold truncate">{item.title}</h4>
+                  <div className="flex items-center gap-2 mt-1 text-xs font-mono text-white/80">
+                    <span>{Math.round(item.calories / (item.servings || 1))} kcal</span>
+                    <span>·</span>
+                    <span className="text-emerald-400 font-semibold">{(item.protein / (item.servings || 1)).toFixed(1)}g P</span>
                   </div>
                 </div>
               </div>
@@ -908,25 +911,26 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
         </div>
       </header>
 
-      {/* Sticky Recipe Categories Bar: pins right below TopBar (top-16) as user scrolls */}
-      <div className="sticky top-16 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-2.5 md:py-3 bg-surface/95 backdrop-blur-md border-b border-surface-container/60 shadow-sm transition-all mb-8">
+      {/* Sticky Categories Bar */}
+      <div className="sticky top-16 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-2.5 bg-surface/95 backdrop-blur-md border-b border-surface-container shadow-2xs transition-all">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          {/* Scrollable Category Pills with Left/Right Navigation Chevrons */}
+          
+          {/* Scrollable Category Filter Chips */}
           <div className="relative flex-1 min-w-0 flex items-center">
             {canScrollLeft && (
               <button 
                 onClick={() => handleScrollCategories('left')}
-                className="absolute left-0 z-20 p-1.5 rounded-full bg-surface-container-high/95 hover:bg-surface-container-highest shadow-md text-on-surface transition-all -ml-1 md:-ml-2 border border-surface-container"
+                className="absolute left-0 z-20 p-1.5 rounded-lg bg-surface-lowest shadow-md text-on-surface hover:bg-surface-low transition-all -ml-1 border border-surface-container"
                 aria-label="Scroll categories left"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
             )}
 
             <div 
               ref={categoriesContainerRef}
               onScroll={checkScrollState}
-              className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 px-1 w-full"
+              className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 w-full"
             >
               {allTags.map((filter) => {
                 const isSelected = selectedFilter === filter;
@@ -942,19 +946,19 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
                       setSelectedFilter(filter);
                       e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                     }}
-                    className={`px-5 py-2 rounded-full font-extrabold text-xs uppercase tracking-wider whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
+                    className={`px-3.5 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                       isSelected 
-                        ? 'bg-primary text-on-primary shadow-sm scale-100 ring-2 ring-primary/20' 
-                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                        ? 'bg-primary text-white shadow-2xs' 
+                        : 'bg-surface-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                     }`}
                   >
                     <span>{filter}</span>
                     <span 
                       aria-hidden="true"
-                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full leading-none font-bold ${
+                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded leading-none font-bold ${
                         isSelected 
-                          ? 'bg-black/20 text-white' 
-                          : 'bg-surface-container-highest text-on-surface-variant'
+                          ? 'bg-white/20 text-white' 
+                          : 'bg-surface-lowest text-on-surface-variant'
                       }`}
                     >
                       {count}
@@ -967,16 +971,16 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
             {canScrollRight && (
               <button 
                 onClick={() => handleScrollCategories('right')}
-                className="absolute right-0 z-20 p-1.5 rounded-full bg-surface-container-high/95 hover:bg-surface-container-highest shadow-md text-on-surface transition-all -mr-1 md:-mr-2 border border-surface-container"
+                className="absolute right-0 z-20 p-1.5 rounded-lg bg-surface-lowest shadow-md text-on-surface hover:bg-surface-low transition-all -mr-1 border border-surface-container"
                 aria-label="Scroll categories right"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Quick Search & Count in Sticky Bar */}
-          <div className="hidden sm:flex items-center gap-2.5 shrink-0">
+          {/* Quick Search */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-on-surface-variant absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -984,7 +988,7 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
                 placeholder="Search recipes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-7 py-1.5 bg-surface-container-low border border-surface-container rounded-full text-xs text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-primary w-36 md:w-48 transition-all"
+                className="pl-8 pr-7 py-1.5 bg-surface-low border border-surface-container rounded-xl text-xs text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-primary w-40 md:w-52 transition-all"
               />
               {searchQuery && (
                 <button 
@@ -996,21 +1000,25 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
                 </button>
               )}
             </div>
-            <span className="text-[11px] font-mono text-on-surface-variant font-bold px-2.5 py-1 rounded-full bg-surface-container-low whitespace-nowrap border border-surface-container/60">
+            <span className="text-[11px] font-mono text-on-surface-variant font-bold px-2.5 py-1 rounded-xl bg-surface-low whitespace-nowrap border border-surface-container">
               {filteredRecipes.length} recipes
             </span>
           </div>
+
         </div>
       </div>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Recipes Grid */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {filteredRecipes.length > 0 ? (
           filteredRecipes.map(recipe => (
             <RecipeCard key={recipe.id} recipe={recipe} onClick={onRecipeClick} onEdit={onEditRecipe} />
           ))
         ) : (
-          <div className="col-span-full py-16 text-center bg-surface-container-lowest/60 rounded-2xl border border-surface-container">
-            <p className="text-on-surface-variant font-medium">No recipes found matching "{searchQuery || selectedFilter}".</p>
+          <div className="col-span-full py-16 text-center bg-surface-lowest rounded-2xl border border-surface-container shadow-2xs">
+            <p className="text-on-surface-variant font-medium text-sm">
+              No recipes found matching "{searchQuery || selectedFilter}".
+            </p>
             <button
               onClick={() => {
                 setSelectedFilter('All Recipes');
@@ -1026,8 +1034,6 @@ export const RecipesScreen: React.FC<RecipesScreenProps> = ({ recipes, onRecipeC
     </motion.div>
   );
 };
-
-import { IngredientCard } from '../components/IngredientCard';
 
 interface IngredientsScreenProps {
   ingredients: Ingredient[];
@@ -1047,57 +1053,70 @@ export const IngredientsScreen: React.FC<IngredientsScreenProps> = ({ ingredient
 
   return (
     <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="pb-12"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="space-y-6 pb-16"
     >
-      <header className="mb-12">
-        <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter text-on-background mb-4">
-          Ingredient <span className="text-primary italic">Hub</span>
-        </h1>
-        <p className="text-on-surface-variant text-lg max-w-2xl leading-relaxed">
-          Manage your pantry staples and custom items. Define nutrition per unit for precise meal planning and accurate macro tracking.
-        </p>
-      </header>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-surface-container">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-on-surface">
+            Ingredient Hub
+          </h1>
+          <p className="text-xs text-on-surface-variant mt-0.5">
+            Manage pantry staples and custom ingredients. Track nutrition per unit for precise meal planning.
+          </p>
+        </div>
+        <button 
+          onClick={onNewIngredient}
+          className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>New Ingredient</span>
+        </button>
+      </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="flex-grow relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
+      {/* Search & Overview Strip */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant w-4 h-4" />
           <input 
-            className="w-full pl-12 pr-4 py-4 bg-surface-container-low rounded-lg border-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-on-surface-variant/50" 
+            className="w-full pl-10 pr-4 py-2.5 bg-surface-lowest border border-surface-container rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary placeholder:text-on-surface-variant/50 shadow-2xs" 
             placeholder="Search ingredients..." 
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <button 
-          onClick={onNewIngredient}
-          className="gradient-primary text-on-primary px-8 py-4 rounded-full font-bold flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition-transform active:scale-95"
-        >
-          <Plus className="w-5 h-5" /> New Ingredient
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono font-bold text-on-surface-variant bg-surface-lowest px-3 py-2 rounded-xl border border-surface-container shadow-2xs">
+            {filteredIngredients.length} Items Listed
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        <div className="hidden md:grid grid-cols-12 px-8 py-4 bg-surface-container-high rounded-full text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
+      {/* Aligned Table Columns Header (Desktop) */}
+      <div className="space-y-2">
+        <div className="hidden md:grid grid-cols-12 px-4 py-2 bg-surface-lowest rounded-xl border border-surface-container text-[11px] font-bold text-on-surface-variant uppercase tracking-wider shadow-2xs">
           <div className="col-span-4">Ingredient</div>
-          <div className="col-span-2 text-center">Unit</div>
+          <div className="col-span-2 text-center">Base Serving</div>
           <div className="col-span-1 text-center">Cals</div>
-          <div className="col-span-1 text-center">Protein</div>
-          <div className="col-span-1 text-center">Carbs</div>
-          <div className="col-span-1 text-center">Fat</div>
+          <div className="col-span-1 text-center text-emerald-600">Protein</div>
+          <div className="col-span-1 text-center text-sky-600">Carbs</div>
+          <div className="col-span-1 text-center text-rose-600">Fat</div>
           <div className="col-span-2 text-right">Actions</div>
         </div>
+
         {filteredIngredients.map(ing => (
           <IngredientCard key={ing.id} ingredient={ing} onEdit={onEditIngredient} />
         ))}
-      </div>
 
-      <div className="mt-12 flex justify-center">
-        <button className="px-8 py-3 bg-surface-container text-on-surface-variant font-bold rounded-full hover:bg-surface-container-high transition-colors active:scale-95">
-          Load More Ingredients
-        </button>
+        {filteredIngredients.length === 0 && (
+          <div className="py-12 text-center bg-surface-lowest rounded-2xl border border-surface-container shadow-2xs">
+            <p className="text-on-surface-variant text-sm font-medium">No ingredients found matching "{searchQuery}".</p>
+          </div>
+        )}
       </div>
     </motion.div>
   );

@@ -1,34 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --font-headline: "Plus Jakarta Sans", sans-serif;
   
-  --color-surface: #f8faf8;
-  --color-surface-low: #f2f4f2;
+  --color-surface: #fbfbfa;
+  --color-surface-low: #f4f4f2;
   --color-surface-lowest: #ffffff;
-  --color-surface-container: #eceeec;
-  --color-surface-container-high: #e6e9e7;
+  --color-surface-container: #e8e8e4;
+  --color-surface-container-high: #deded9;
   
-  --color-primary: #186a22;
-  --color-primary-container: #358438;
-  --color-secondary: #835500;
-  --color-secondary-container: #feb64c;
-  --color-tertiary: #3d6700;
-  --color-tertiary-fixed: #b9f474;
+  --color-primary: #166534;
+  --color-primary-hover: #14532d;
+  --color-primary-container: #15803d;
+  --color-primary-light: #dcfce7;
+  --color-on-primary: #ffffff;
+  
+  --color-secondary: #b45309;
+  --color-secondary-container: #fef3c7;
   
   --color-on-background: #191c1b;
   --color-on-surface: #191c1b;
-  --color-on-surface-variant: #40493d;
+  --color-on-surface-variant: #545d52;
+  --color-outline: #e2e4e0;
+
+  --color-macro-protein: #059669;
+  --color-macro-carbs: #0284c7;
+  --color-macro-fat: #e11d48;
+  --color-macro-fiber: #7c3aed;
   
-  --radius-lg: 2rem;
-  --radius-xl: 3rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
 }
 
 @layer base {
   body {
-    @apply bg-surface text-on-background font-sans antialiased;
+    @apply bg-surface text-on-background font-sans antialiased selection:bg-emerald-200 selection:text-emerald-950;
   }
 }
 
@@ -41,7 +51,7 @@
 }
 
 .glass {
-  @apply bg-surface/80 backdrop-blur-xl;
+  @apply bg-surface/90 backdrop-blur-md;
 }
 
 .gradient-primary {

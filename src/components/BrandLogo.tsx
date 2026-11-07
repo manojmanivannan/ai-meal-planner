@@ -21,8 +21,8 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 40 
       >
         <defs>
           <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#10B981" />
-            <stop offset="100%" stopColor="#059669" />
+            <stop offset="0%" stopColor="#15803d" />
+            <stop offset="100%" stopColor="#166534" />
           </linearGradient>
         </defs>
         
