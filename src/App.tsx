@@ -47,7 +47,7 @@ export default function App() {
   };
 
   const handleEditRecipe = (id: string) => {
-    const recipe = recipes.find(r => r.id === id);
+    const recipe = recipes.find(r => r.id === id || String(r.id) === String(id));
     if (recipe) {
       setSelectedRecipe(recipe);
       setCurrentView('edit-recipe');
@@ -56,7 +56,9 @@ export default function App() {
 
   const handleSaveRecipe = (recipeData: Partial<Recipe>) => {
     if (selectedRecipe) {
-      setRecipes(recipes.map(r => r.id === selectedRecipe.id ? { ...r, ...recipeData } as Recipe : r));
+      const updated = { ...selectedRecipe, ...recipeData } as Recipe;
+      setRecipes(recipes.map(r => r.id === selectedRecipe.id ? updated : r));
+      setSelectedRecipe(updated);
     } else {
       const newRecipe: Recipe = {
         ...recipeData,
@@ -76,12 +78,13 @@ export default function App() {
   };
 
   const handleDeleteRecipe = (id: string) => {
-    setRecipes(recipes.filter(r => r.id !== id));
+    setRecipes(recipes.filter(r => r.id !== id && String(r.id) !== String(id)));
+    setSelectedRecipe(undefined);
     setCurrentView('main');
   };
 
   const handleRecipeClick = (id: string) => {
-    const recipe = recipes.find(r => r.id === id);
+    const recipe = recipes.find(r => r.id === id || String(r.id) === String(id));
     if (recipe) {
       setSelectedRecipe(recipe);
       setCurrentView('recipe-detail');
@@ -135,7 +138,13 @@ export default function App() {
       <div className="min-h-screen bg-surface p-6">
         <CreateRecipeScreen 
           recipe={selectedRecipe}
-          onBack={() => setCurrentView('main')} 
+          onBack={() => {
+            if (currentView === 'edit-recipe' && selectedRecipe) {
+              setCurrentView('recipe-detail');
+            } else {
+              setCurrentView('main');
+            }
+          }} 
           onSave={handleSaveRecipe}
           onDelete={handleDeleteRecipe}
           onAddNewIngredient={handleNewIngredient}
