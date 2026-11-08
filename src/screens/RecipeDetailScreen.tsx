@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   ArrowLeft, Clock, Users, Star, Flame, 
@@ -19,6 +19,11 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
   onEdit, 
   onDelete 
 }) => {
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [recipe.id]);
   const serves = recipe.servings || 1;
   const perCal = Math.round(recipe.calories / serves);
   const perProt = recipe.protein / serves;

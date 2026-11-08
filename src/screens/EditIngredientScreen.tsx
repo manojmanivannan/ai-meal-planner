@@ -16,6 +16,11 @@ export const EditIngredientScreen: React.FC<EditIngredientScreenProps> = ({
   onSave, 
   onDelete 
 }) => {
+  React.useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [ingredient?.id]);
   const categories: Category[] = ['Produce', 'Dairy', 'Protein', 'Pantry', 'Spices', 'Grains'];
   const [name, setName] = React.useState(ingredient?.name || '');
   const [category, setCategory] = React.useState<Category>(ingredient?.category || 'Produce');

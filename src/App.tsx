@@ -16,16 +16,19 @@ export default function App() {
   const [recipes, setRecipes] = useState<Recipe[]>(INITIAL_RECIPES);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | undefined>();
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
+  const recipesScrollPosRef = React.useRef<number>(0);
 
   const handleEditIngredient = (id: string) => {
     const ing = ingredients.find(i => i.id === id);
     setSelectedIngredient(ing);
     setCurrentView('edit-ingredient');
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
   const handleNewIngredient = () => {
     setSelectedIngredient(undefined);
     setCurrentView('edit-ingredient');
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
   const handleSaveIngredient = (ing: Partial<Ingredient>) => {
@@ -52,6 +55,7 @@ export default function App() {
   const handleNewRecipe = () => {
     setSelectedRecipe(undefined);
     setCurrentView('create-recipe');
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
   const handleEditRecipe = (id: string) => {
@@ -59,6 +63,7 @@ export default function App() {
     if (recipe) {
       setSelectedRecipe(recipe);
       setCurrentView('edit-recipe');
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }
   };
 
@@ -94,17 +99,36 @@ export default function App() {
   const handleRecipeClick = (id: string) => {
     const recipe = recipes.find(r => r.id === id || String(r.id) === String(id));
     if (recipe) {
+      if (activeTab === 'recipes' && currentView === 'main') {
+        recipesScrollPosRef.current = window.scrollY || document.documentElement.scrollTop || 0;
+      }
       setSelectedRecipe(recipe);
       setCurrentView('recipe-detail');
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
     }
   };
 
   const handleBack = () => {
     if (currentView === 'edit-recipe' && selectedRecipe) {
       setCurrentView('recipe-detail');
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     } else {
+      const wasInRecipeDetail = currentView === 'recipe-detail';
       setCurrentView('main');
+      if (wasInRecipeDetail && activeTab === 'recipes' && recipesScrollPosRef.current > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: recipesScrollPosRef.current, left: 0, behavior: 'instant' });
+        });
+      }
     }
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setCurrentView('main');
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
   const renderContent = () => {
@@ -180,10 +204,7 @@ export default function App() {
       {/* Unified Sticky Top Bar Across All Pages */}
       <TopBar 
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          setActiveTab(tab);
-          setCurrentView('main');
-        }}
+        onTabChange={handleTabChange}
         currentView={currentView}
         pageTitle={
           currentView === 'recipe-detail' ? selectedRecipe?.title :
@@ -217,7 +238,7 @@ export default function App() {
 
       {/* Mobile Bottom Navigation (Only visible on mobile and on main views) */}
       {currentView === 'main' && (
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       )}
     </div>
   );

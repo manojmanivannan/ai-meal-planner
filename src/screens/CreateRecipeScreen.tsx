@@ -20,6 +20,11 @@ export const CreateRecipeScreen: React.FC<CreateRecipeScreenProps> = ({
   onDelete,
   onAddNewIngredient 
 }) => {
+  React.useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [recipe?.id]);
   const [title, setTitle] = React.useState(recipe?.title || '');
   const [description, setDescription] = React.useState(recipe?.description || '');
   const [prepTime, setPrepTime] = React.useState(recipe?.prepTime || 30);
