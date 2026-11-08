@@ -702,16 +702,17 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
           {/* Left Column: 5 Meal Slots */}
           <div className="lg:col-span-8 bg-surface-lowest rounded-2xl p-5 border border-surface-container shadow-2xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setSelectedDay(prevDay)}
-                  className="p-1 rounded-lg hover:bg-surface-low transition-colors text-on-surface-variant cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-surface-low transition-colors text-on-surface-variant hover:text-on-surface cursor-pointer active:scale-95"
                   title={`Previous: ${prevDay}`}
+                  aria-label={`Previous day: ${prevDay}`}
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black text-on-surface">{selectedDay}</h2>
+                <div className="w-[185px] sm:w-[200px] shrink-0 flex items-center justify-center gap-2 select-none">
+                  <h2 className="text-xl font-black text-on-surface tracking-tight">{selectedDay}</h2>
                   {selectedDay === 'Thursday' && (
                     <span className="bg-primary-light text-primary text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
                       TODAY
@@ -720,8 +721,9 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
                 </div>
                 <button
                   onClick={() => setSelectedDay(nextDay)}
-                  className="p-1 rounded-lg hover:bg-surface-low transition-colors text-on-surface-variant cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-surface-low transition-colors text-on-surface-variant hover:text-on-surface cursor-pointer active:scale-95"
                   title={`Next: ${nextDay}`}
+                  aria-label={`Next day: ${nextDay}`}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
