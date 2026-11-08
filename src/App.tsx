@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TopBar, BottomNav } from './components/Navigation';
 import { PlannerScreen, RecipesScreen, IngredientsScreen } from './screens/MainScreens';
 import { EditIngredientScreen } from './screens/EditIngredientScreen';
 import { CreateRecipeScreen } from './screens/CreateRecipeScreen';
 import { RecipeDetailScreen } from './screens/RecipeDetailScreen';
-import { Ingredient, Recipe } from './types';
+import { AuthModal } from './components/AuthModal';
+import { authStore, getEmptyWeeklyPlan } from './services/authStore';
+import { Ingredient, Recipe, UserProfile, DayPlans } from './types';
 import { INITIAL_INGREDIENTS, INITIAL_RECIPES } from './constants';
 
 type ViewState = 'main' | 'edit-ingredient' | 'create-recipe' | 'edit-recipe' | 'recipe-detail';
@@ -12,12 +14,75 @@ type ViewState = 'main' | 'edit-ingredient' | 'create-recipe' | 'edit-recipe' | 
 export default function App() {
   const [activeTab, setActiveTab] = useState('planner');
   const [currentView, setCurrentView] = useState<ViewState>('main');
-  const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
-  const [recipes, setRecipes] = useState<Recipe[]>(INITIAL_RECIPES);
+
+  // User & Auth State
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authStore.getCurrentUser());
+  const [allUsers, setAllUsers] = useState<UserProfile[]>(() => authStore.getAllUsers());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'signin' | 'signup' | 'demo'>('signin');
+
+  // Per-User Partitioned Data
+  const [ingredients, setIngredients] = useState<Ingredient[]>(() => {
+    const user = authStore.getCurrentUser();
+    return user ? authStore.getUserData(user.id).ingredients : INITIAL_INGREDIENTS;
+  });
+
+  const [recipes, setRecipes] = useState<Recipe[]>(() => {
+    const user = authStore.getCurrentUser();
+    return user ? authStore.getUserData(user.id).recipes : INITIAL_RECIPES;
+  });
+
+  const [weeklyPlan, setWeeklyPlan] = useState<DayPlans>(() => {
+    const user = authStore.getCurrentUser();
+    return user ? authStore.getUserData(user.id).weeklyPlan : getEmptyWeeklyPlan();
+  });
+
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | undefined>();
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | undefined>();
-  const recipesScrollPosRef = React.useRef<number>(0);
+  const recipesScrollPosRef = useRef<number>(0);
 
+  // Load user data when switching active user
+  const loadUserData = (userId: string) => {
+    const userData = authStore.getUserData(userId);
+    setIngredients(userData.ingredients);
+    setRecipes(userData.recipes);
+    setWeeklyPlan(userData.weeklyPlan);
+  };
+
+  const handleSwitchUser = (userId: string) => {
+    const switched = authStore.switchUser(userId);
+    if (switched) {
+      setCurrentUser(switched);
+      setAllUsers(authStore.getAllUsers());
+      loadUserData(userId);
+      setCurrentView('main');
+    }
+  };
+
+  const handleAuthSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    setAllUsers(authStore.getAllUsers());
+    loadUserData(user.id);
+    setCurrentView('main');
+  };
+
+  const handleSignOut = () => {
+    authStore.signOut();
+    setCurrentUser(null);
+    setIngredients(INITIAL_INGREDIENTS);
+    setRecipes(INITIAL_RECIPES);
+    setWeeklyPlan(getEmptyWeeklyPlan());
+    setCurrentView('main');
+    setIsAuthModalOpen(true);
+    setAuthModalTab('signin');
+  };
+
+  const handleOpenAuth = (tab: 'signin' | 'signup' | 'demo' = 'signin') => {
+    setAuthModalTab(tab);
+    setIsAuthModalOpen(true);
+  };
+
+  // ── Ingredients Handlers ──────────────────────────────────────────────────
   const handleEditIngredient = (id: string) => {
     const ing = ingredients.find(i => i.id === id);
     setSelectedIngredient(ing);
@@ -32,26 +97,36 @@ export default function App() {
   };
 
   const handleSaveIngredient = (ing: Partial<Ingredient>) => {
+    let updated: Ingredient[];
     if (selectedIngredient) {
-      setIngredients(ingredients.map(i => i.id === selectedIngredient.id ? { ...i, ...ing } as Ingredient : i));
+      updated = ingredients.map(i => i.id === selectedIngredient.id ? { ...i, ...ing } as Ingredient : i);
     } else {
       const newIng: Ingredient = {
         ...ing,
         id: Math.random().toString(36).substr(2, 9),
       } as Ingredient;
-      setIngredients([...ingredients, newIng]);
+      updated = [...ingredients, newIng];
+    }
+    setIngredients(updated);
+    if (currentUser) {
+      authStore.saveUserData(currentUser.id, { ingredients: updated });
     }
     setCurrentView('main');
   };
 
   const handleDeleteIngredient = (id: string) => {
-    setIngredients(ingredients.filter(i => i.id !== id));
+    const updated = ingredients.filter(i => i.id !== id);
+    setIngredients(updated);
     if (selectedIngredient?.id === id) {
       setSelectedIngredient(undefined);
+    }
+    if (currentUser) {
+      authStore.saveUserData(currentUser.id, { ingredients: updated });
     }
     setCurrentView('main');
   };
 
+  // ── Recipes Handlers ───────────────────────────────────────────────────────
   const handleNewRecipe = () => {
     setSelectedRecipe(undefined);
     setCurrentView('create-recipe');
@@ -68,10 +143,11 @@ export default function App() {
   };
 
   const handleSaveRecipe = (recipeData: Partial<Recipe>) => {
+    let updated: Recipe[];
     if (selectedRecipe) {
-      const updated = { ...selectedRecipe, ...recipeData } as Recipe;
-      setRecipes(recipes.map(r => r.id === selectedRecipe.id ? updated : r));
-      setSelectedRecipe(updated);
+      const updatedRecipe = { ...selectedRecipe, ...recipeData } as Recipe;
+      updated = recipes.map(r => r.id === selectedRecipe.id ? updatedRecipe : r);
+      setSelectedRecipe(updatedRecipe);
     } else {
       const newRecipe: Recipe = {
         ...recipeData,
@@ -85,14 +161,22 @@ export default function App() {
         carbs: recipeData.carbs || 30,
         fats: recipeData.fats || 15,
       } as Recipe;
-      setRecipes([newRecipe, ...recipes]);
+      updated = [newRecipe, ...recipes];
+    }
+    setRecipes(updated);
+    if (currentUser) {
+      authStore.saveUserData(currentUser.id, { recipes: updated });
     }
     setCurrentView('main');
   };
 
   const handleDeleteRecipe = (id: string) => {
-    setRecipes(recipes.filter(r => r.id !== id && String(r.id) !== String(id)));
+    const updated = recipes.filter(r => r.id !== id && String(r.id) !== String(id));
+    setRecipes(updated);
     setSelectedRecipe(undefined);
+    if (currentUser) {
+      authStore.saveUserData(currentUser.id, { recipes: updated });
+    }
     setCurrentView('main');
   };
 
@@ -107,6 +191,30 @@ export default function App() {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
+    }
+  };
+
+  // ── Weekly Plan Handlers ───────────────────────────────────────────────────
+  const handleUpdateWeeklyPlan = (newPlan: DayPlans) => {
+    setWeeklyPlan(newPlan);
+    if (currentUser) {
+      authStore.saveUserData(currentUser.id, { weeklyPlan: newPlan });
+    }
+  };
+
+  const handlePopulateStarterWeek = () => {
+    if (currentUser) {
+      const updated = authStore.populateStarterWeek(currentUser.id);
+      setWeeklyPlan(updated.weeklyPlan);
+    }
+  };
+
+  const handleClearWeeklyPlan = () => {
+    if (currentUser) {
+      const updated = authStore.clearWeeklyPlan(currentUser.id);
+      setWeeklyPlan(updated.weeklyPlan);
+    } else {
+      setWeeklyPlan(getEmptyWeeklyPlan());
     }
   };
 
@@ -173,6 +281,11 @@ export default function App() {
             return (
               <PlannerScreen 
                 recipes={recipes}
+                weeklyPlan={weeklyPlan}
+                onUpdateWeeklyPlan={handleUpdateWeeklyPlan}
+                onPopulateStarterWeek={handlePopulateStarterWeek}
+                onClearWeeklyPlan={handleClearWeeklyPlan}
+                userName={currentUser?.name}
                 onRecipeClick={handleRecipeClick} 
                 onBrowseRecipes={() => setActiveTab('recipes')}
               />
@@ -229,6 +342,11 @@ export default function App() {
           currentView === 'edit-ingredient' ? (selectedIngredient ? 'Save Changes' : 'Create Ingredient') :
           currentView === 'edit-recipe' ? 'Update Recipe' : 'Save Recipe'
         }
+        currentUser={currentUser}
+        allUsers={allUsers}
+        onSwitchUser={handleSwitchUser}
+        onOpenAuth={handleOpenAuth}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Responsive Content Viewport */}
@@ -240,6 +358,14 @@ export default function App() {
       {currentView === 'main' && (
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       )}
+
+      {/* Authentication & Profile Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+        initialTab={authModalTab}
+      />
     </div>
   );
 }

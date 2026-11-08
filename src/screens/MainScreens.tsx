@@ -16,6 +16,11 @@ interface PlannerScreenProps {
   onRecipeClick: (id: string) => void;
   recipes?: Recipe[];
   onBrowseRecipes?: () => void;
+  weeklyPlan?: Record<string, Record<MealSlot, string[]>>;
+  onUpdateWeeklyPlan?: (plan: Record<string, Record<MealSlot, string[]>>) => void;
+  onPopulateStarterWeek?: () => void;
+  onClearWeeklyPlan?: () => void;
+  userName?: string;
 }
 
 type MealSlot = 'preBreakfast' | 'breakfast' | 'lunch' | 'snack' | 'dinner';
@@ -49,67 +54,37 @@ const DAY_SHORT_MAP: Record<string, string> = {
 export const PlannerScreen: React.FC<PlannerScreenProps> = ({ 
   onRecipeClick, 
   recipes = INITIAL_RECIPES,
-  onBrowseRecipes 
+  onBrowseRecipes,
+  weeklyPlan,
+  onUpdateWeeklyPlan,
+  onPopulateStarterWeek,
+  onClearWeeklyPlan,
+  userName,
 }) => {
   const [selectedDay, setSelectedDay] = React.useState<string>('Thursday');
   const [viewMode, setViewMode] = React.useState<'day' | 'week'>('day');
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
   const [activeSlot, setActiveSlot] = React.useState<{ day: string; slot: MealSlot; slotLabel: string } | null>(null);
 
-  // Initial plan populated from canonical weekly_plan.csv
-  const [dayPlans, setDayPlans] = React.useState<Record<string, Record<MealSlot, string[]>>>(() => {
-    return {
-      Monday: {
-        preBreakfast: ['54'],
-        breakfast: ['80'],
-        lunch: ['24'],
-        snack: [],
-        dinner: ['205', '206']
-      },
-      Tuesday: {
-        preBreakfast: ['54'],
-        breakfast: ['202'],
-        lunch: ['16'],
-        snack: [],
-        dinner: ['67']
-      },
-      Wednesday: {
-        preBreakfast: ['54'],
-        breakfast: ['3'],
-        lunch: ['65', '97'],
-        snack: [],
-        dinner: ['74']
-      },
-      Thursday: {
-        preBreakfast: ['54'],
-        breakfast: ['3'],
-        lunch: ['208', '206'],
-        snack: [],
-        dinner: ['85']
-      },
-      Friday: {
-        preBreakfast: ['54'],
-        breakfast: ['49'],
-        lunch: [],
-        snack: [],
-        dinner: ['14']
-      },
-      Saturday: {
-        preBreakfast: ['54'],
-        breakfast: [],
-        lunch: [],
-        snack: [],
-        dinner: ['68']
-      },
-      Sunday: {
-        preBreakfast: [],
-        breakfast: [],
-        lunch: [],
-        snack: [],
-        dinner: []
-      }
+  // Local fallback if weeklyPlan prop is not provided
+  const [localPlans, setLocalPlans] = React.useState<Record<string, Record<MealSlot, string[]>>>(() => {
+    return weeklyPlan || {
+      Monday: { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] },
+      Tuesday: { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] },
+      Wednesday: { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] },
+      Thursday: { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] },
+      Friday: { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] },
+      Saturday: { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] },
+      Sunday: { preBreakfast: [], breakfast: [], lunch: [], snack: [], dinner: [] },
     };
   });
+
+  const dayPlans = weeklyPlan || localPlans;
+
+  const updatePlans = (newPlans: Record<string, Record<MealSlot, string[]>>) => {
+    setLocalPlans(newPlans);
+    onUpdateWeeklyPlan?.(newPlans);
+  };
 
   const getRecipeById = React.useCallback((id: string): Recipe | undefined => {
     const resolvedId = LEGACY_RECIPE_ID_MAP[id] || id;
@@ -215,41 +190,40 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
 
   const handleSelectRecipe = (recipeId: string) => {
     if (activeSlot) {
-      setDayPlans(prev => {
-        const currentSlotItems = prev[activeSlot.day]?.[activeSlot.slot] || [];
-        return {
-          ...prev,
-          [activeSlot.day]: {
-            ...prev[activeSlot.day],
-            [activeSlot.slot]: [...currentSlotItems, recipeId]
-          }
-        };
-      });
+      const currentSlotItems = dayPlans[activeSlot.day]?.[activeSlot.slot] || [];
+      const updated = {
+        ...dayPlans,
+        [activeSlot.day]: {
+          ...dayPlans[activeSlot.day],
+          [activeSlot.slot]: [...currentSlotItems, recipeId]
+        }
+      };
+      updatePlans(updated);
     }
   };
 
   const handleRemoveItem = (day: string, slot: MealSlot, indexToRemove: number) => {
-    setDayPlans(prev => {
-      const currentItems = prev[day]?.[slot] || [];
-      const updated = currentItems.filter((_, idx) => idx !== indexToRemove);
-      return {
-        ...prev,
-        [day]: {
-          ...prev[day],
-          [slot]: updated
-        }
-      };
-    });
+    const currentItems = dayPlans[day]?.[slot] || [];
+    const updatedItems = currentItems.filter((_, idx) => idx !== indexToRemove);
+    const updated = {
+      ...dayPlans,
+      [day]: {
+        ...dayPlans[day],
+        [slot]: updatedItems
+      }
+    };
+    updatePlans(updated);
   };
 
   const handleClearSlot = (day: string, slot: MealSlot) => {
-    setDayPlans(prev => ({
-      ...prev,
+    const updated = {
+      ...dayPlans,
       [day]: {
-        ...prev[day],
+        ...dayPlans[day],
         [slot]: []
       }
-    }));
+    };
+    updatePlans(updated);
   };
 
   const handleExportPDF = () => {
@@ -623,6 +597,27 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
             </button>
           </div>
 
+          {weeklyAnalytics.plannedCount === 0 && onPopulateStarterWeek && (
+            <button
+              onClick={onPopulateStarterWeek}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 rounded-xl text-xs font-bold transition-all border border-emerald-200 dark:border-emerald-800 shadow-2xs cursor-pointer active:scale-95"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Populate Starter Week</span>
+              <span className="sm:hidden">Starter Week</span>
+            </button>
+          )}
+
+          {weeklyAnalytics.plannedCount > 0 && onClearWeeklyPlan && (
+            <button
+              onClick={onClearWeeklyPlan}
+              className="px-3.5 py-1.5 bg-surface-low hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 rounded-xl text-xs font-bold transition-colors border border-surface-container hover:border-rose-200 dark:hover:border-rose-900 cursor-pointer"
+              title="Clear all meals for this week"
+            >
+              Clear Week
+            </button>
+          )}
+
           <button
             onClick={handleExportPDF}
             className="px-3.5 py-1.5 bg-surface-low hover:bg-surface-container rounded-xl text-on-surface text-xs font-bold transition-colors border border-surface-container cursor-pointer"
@@ -640,6 +635,46 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
           )}
         </div>
       </div>
+
+      {/* Empty Plan Onboarding Banner */}
+      {weeklyAnalytics.plannedCount === 0 && (
+        <div className="bg-surface-lowest border border-surface-container rounded-2xl p-5 md:p-6 shadow-2xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <h2 className="text-base font-extrabold text-on-surface">
+                  {userName ? `${userName}'s Weekly Plan is Clean & Ready` : 'Your Weekly Meal Plan is Clean & Empty'}
+                </h2>
+              </div>
+              <p className="text-xs text-on-surface-variant max-w-xl">
+                Every new account starts with a fresh, empty planner. You can pick recipes into any meal slot below, browse your recipe catalog, or populate a balanced 7-day starter week with one click.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              {onPopulateStarterWeek && (
+                <button
+                  onClick={onPopulateStarterWeek}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Populate Starter Week</span>
+                </button>
+              )}
+              {onBrowseRecipes && (
+                <button
+                  onClick={onBrowseRecipes}
+                  className="px-3.5 py-2 bg-surface-low hover:bg-surface-container rounded-xl text-on-surface text-xs font-bold transition-colors border border-surface-container cursor-pointer"
+                >
+                  Browse Recipes
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Center Day Navigation in Day Focus View (Matches MON, TUE, WED...) */}
       {viewMode === 'day' && (

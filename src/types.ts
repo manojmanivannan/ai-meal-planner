@@ -52,6 +52,8 @@ export interface DayPlan {
   dinner: string[];
 }
 
+export type DayPlans = Record<string, Record<MealSlot, string[]>>;
+
 export interface MealPlanDay {
   date: string;
   meals: {
@@ -67,5 +69,24 @@ export interface WeeklyPlanEntry {
   day: string;
   meal_type: string;
   recipe_ids: number[];
+}
+
+export type UserRole = 'chef' | 'nutritionist' | 'home_cook' | 'member';
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
+export interface UserAccountData {
+  userId: string;
+  recipes: Recipe[];
+  ingredients: Ingredient[];
+  weeklyPlan: DayPlans;
+  hasPopulatedStarterWeek?: boolean;
 }
 

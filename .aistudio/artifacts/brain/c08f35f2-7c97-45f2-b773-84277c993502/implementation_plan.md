@@ -1,113 +1,154 @@
-# Weekly Planner Recipe Cards & Full Nutrition Telemetry
+# Multi-User Authentication & Account Isolation Plan
 
-## Overview & Goal
-Upgrade the Weekly Planner and recipe cards to achieve full nutritional feature parity with the reference designs. This introduces a 5-meal slot architecture per day (Pre-breakfast, Breakfast, Lunch, Snack, Dinner), multi-item support per slot, inline color-coded macro badges (Calories, Protein, Carbs, Fat), a comprehensive daily macro footer with distribution bar, and weekly aggregated metrics (planned completion, average daily calories, protein, carbs, fat, and fiber).
+Support multi-user authentication (sign-up, sign-in, and pre-configured quick demo accounts) where every user inherits the canonical base catalog of ingredients and recipes, while maintaining private per-user edits and a pristine empty weekly meal planner with starter week onboarding.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> Based on your confirmed choices:
-> 1. **Schedule Architecture**: Day-by-day tabbed view featuring deep nutrition summary and meal breakdown.
-> 2. **Multi-Item Support**: Each meal slot supports multiple recipe items, with combined macro calculations and individual item removal.
-> 3. **5 Meal Slots**: Pre-breakfast, Breakfast, Lunch, Snack, and Dinner are supported across all 7 days.
+> The following architectural decisions were confirmed via clarifying questions:
 
-- **Confirmed Decision 1**: Pre-breakfast, Breakfast, Lunch, Snack, Dinner slots.
-- **Confirmed Decision 2**: Color-coded inline telemetry for each meal item: `kcal • X.Xg P • X.Xg C • X.Xg F`.
-- **Confirmed Decision 3**: Aggregated Daily Nutrition footer (Daily Total kcal, Macro distribution bar, Protein, Carbs, Fat, Fiber cards).
+- **Private Per-User Catalog & Pantry**: Every account receives a personal fork of the base recipe and ingredient catalog upon creation. Any additions, adjustments, or pantry availability toggles remain isolated to that user account.
+- **Authentication Method**: Email and password authentication with instant 1-click pre-configured demo accounts ("Maya Patel — Nutritionist" and "Alex Rivera — Home Chef") for friction-free testing.
+- **Empty Weekly Planner Onboarding**: All new user accounts initialize with a 100% empty weekly plan. The planner displays an inviting zero-state banner with an optional "Populate Starter Week" one-click action and a "Browse Recipes" button.
 
 ---
 
-## 1. Core User Experience & Flows
+## 1. Overview & Core Concept
 
-### A. Weekly Metrics & Analytics Banner
-- **Planned Meals Progress**: Tracks scheduled meals out of total possible slots (e.g., `21/35`, `60%` with a progress bar).
-- **Macro Averages**: 5 summary metric cards displaying average daily intake and total week sums:
-  - Avg Daily Cal (`kcal/day` + Week Total)
-  - Avg Daily Protein (`g/day` + Week Total)
-  - Avg Daily Carbs (`g/day` + Week Total)
-  - Avg Daily Fat (`g/day` + Week Total)
-  - Avg Daily Fiber (`g/day` + Week Total)
-- **Actions**: "Browse Recipes" button to quickly jump to the recipe catalog, and "Export PDF" for weekly summary printing.
-
-### B. Day Navigation & Slot Management
-- **Day Selector Tabs**: `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN` with active day highlight, `TODAY` indicator, and completed slot count badge (e.g. `4/5`).
-- **5 Meal Slots per Day**:
-  - 🌅 **PRE-BREAKFAST**: Clear button + `+ Add` button
-  - 🍳 **BREAKFAST**: Clear button + `+ Add` button
-  - 🥗 **LUNCH**: Clear button + `+ Add` button
-  - 🍎 **SNACK**: Clear button + `+ Add` button
-  - 🍲 **DINNER**: Clear button + `+ Add` button
-
-### C. Individual Recipe Items in Meal Slots
-- Dot indicator (color-coded dietary or meal category).
-- Recipe title with one-click navigation to Recipe Detail.
-- Inline Macro Breakdown: `[Calories] kcal • [Protein]g P • [Carbs]g C • [Fats]g F`.
-  - Protein: emerald green (`text-emerald-400`)
-  - Carbs: cyan blue (`text-sky-400`)
-  - Fat: coral red (`text-rose-400`)
-- Dismiss/Remove `X` button to delete specific recipe from the slot without affecting other items.
-- Empty state: Clean dashed slot with `+ Assign [slot]` button.
-
-### D. Daily Nutrition Summary Card
-- **Daily Total**: Prominent calorie count (`XXXX kcal`).
-- **Macro Distribution Bar**: Visual proportion bar showing the calorie breakdown of Protein (4 kcal/g), Carbs (4 kcal/g), and Fat (9 kcal/g).
-- **4 Metric Cards**:
-  - `PROTEIN`: Exact total grams with emerald accent.
-  - `CARBS`: Exact total grams with cyan accent.
-  - `FAT`: Exact total grams with coral accent.
-  - `FIBER`: Exact total grams with violet accent.
+- **What It Does**: Transforms Kitchen Table from a single-session in-memory planner into an authenticated multi-user application. Users can register with email and password or instantly switch between demo profiles. Each user profile owns their private weekly plan, customized recipes, and pantry ingredient availability.
+- **Target Audience / Persona**: Individuals and households organizing weekly meals, nutritionists planning specialized menus, and home cooks curating personal variations of base recipes.
+- **Key Value**: Preserves personal meal schedules and dietary preferences per user account without data collisions, while guaranteeing instant access to rich curated recipes and ingredients from the start.
 
 ---
 
-## 2. Technical Architecture & Data Strategy
+## 2. User Experience & Visual Design
+
+### Key User Flows
+
+1. **Authentication & Onboarding**:
+   - Top bar displays the active user profile (avatar, name, email) or a "Sign In" button.
+   - Clicking opens the Auth Modal offering tabs for **Sign In**, **Create Account**, and **Demo Accounts**.
+   - Demo accounts allow single-click login with pre-populated credentials.
+   - Upon sign-up, the user profile is created, base data is cloned, and the user is signed in seamlessly.
+
+2. **Empty Planner Zero-State & Starter Week**:
+   - When a newly registered user visits the **Planner** tab, every meal slot across Monday–Sunday is empty.
+   - A welcoming onboarding card highlights: *"Your week is ready to plan. Add meals to any slot or populate a balanced starter week."*
+   - Clicking **"Populate Starter Week"** intelligently fills the week with curated meals, which can be modified or cleared anytime with a **"Clear Week"** action.
+
+3. **Isolated Recipes & Pantry Management**:
+   - Users can toggle pantry availability on ingredients or create custom recipes.
+   - Changes are saved directly to that user's private account partition and persist across page refreshes.
+   - Logging into another account immediately displays that account's distinct plan and pantry status.
+
+4. **Account Management & Sign Out**:
+   - Clicking the user profile avatar in the top bar reveals a menu with user details, account switch options, and a **Sign Out** button.
+   - Signing out safely returns to a guest state or prompts login without wiping stored user accounts.
+
+### Visual Identity & Theme
+
+- **Palette**: Warm slate canvas (`#F8FAFC` light / `#0F172A` dark) paired with Kitchen Table's signature emerald accent (`#059669` emerald-600) and amber culinary highlights.
+- **Top Bar Contract**: Adheres strictly to the 3-zone contract:
+  - **Zone 1 (Brand)**: Kitchen Table logo and wordmark (`shrink-0`).
+  - **Zone 2 (Nav Links)**: `Planner`, `Recipes`, `Ingredients` single-line tabs.
+  - **Zone 3 (Actions & Account)**: Primary context action (e.g. `+ Add Meal` or `+ Recipe`) alongside the user account pill/avatar dropdown.
+- **Zero-Pill Metadata**: Recipe calories, prep times, and macro breakdowns continue to use clean text with subtle typographic separators (`·`).
+
+---
+
+## 3. Key Product Decisions & Trade-Offs
+
+- **Decision 1: Client-Side Multi-Account Storage Engine with LocalStorage**
+  - *Chosen Approach*: Implement a structured multi-user storage engine (`userStore`) that persists accounts, sessions, and per-user data partitions in browser `localStorage`.
+  - *Why*: Eliminates dependencies on external server provisioning while ensuring zero-latency transitions, 100% offline reliability in AI Studio, and permanent persistence across refreshes and dev server restarts.
+  - *Alternatives Considered*: Server-side SQLite/Postgres backend. Avoided because dev server runs Vite directly in the container without active Postgres/Python backend daemons.
+
+- **Decision 2: Base Seed Inheritance via Copy-on-Write / Forking**
+  - *Chosen Approach*: New accounts copy the canonical `INITIAL_RECIPES` and `INITIAL_INGREDIENTS` into their private user partition.
+  - *Why*: Guarantees that every user immediately has the full 20+ recipes and 100+ ingredients ready to use, while allowing them to edit quantities or delete items without breaking other users' libraries.
+
+- **Decision 3: Quick Demo Accounts & Seamless Switching**
+  - *Chosen Approach*: Provide 2 pre-seeded demo personas with distinct meal planner preferences and one-click quick switch buttons.
+  - *Why*: Allows instant verification of account isolation and multi-user switching without forcing repetitive form filling.
+
+---
+
+## 4. Technical Architecture & Data Strategy
+
+### System Architecture Diagram
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                        App.tsx                         │
-│   (Manages recipes, ingredients, and weekly plan state)│
-└──────────────────────────┬─────────────────────────────┘
-                           │
-             ┌─────────────┴─────────────┐
-             ▼                           ▼
-┌───────────────────────────┐ ┌───────────────────────────┐
-│       WeeklySummary       │ │       PlannerScreen       │
-│  - Planned ratio (21/35)  │ │  - Day Tabs (Mon-Sun)     │
-│  - Avg Cal / Prot / Carb  │ │  - 5 Meal Slots           │
-│  - Fat / Fiber aggregates │ │  - Multi-item slots       │
-└───────────────────────────┘ └─────────────┬─────────────┘
-                                            │
-                                            ▼
-                              ┌───────────────────────────┐
-                              │     PlannerRecipeItem     │
-                              │ - Color dot & Title       │
-                              │ - kcal • P • C • F        │
-                              │ - Remove (X) button       │
-                              └───────────────────────────┘
-                                            │
-                                            ▼
-                              ┌───────────────────────────┐
-                              │     DailyNutritionCard    │
-                              │ - Total kcal              │
-                              │ - Macro ratio bar         │
-                              │ - Protein, Carbs, Fat,    │
-                              │   Fiber stat cards        │
-                              └───────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Top Bar & Navigation                            │
+│   [Kitchen Table] ── [Planner | Recipes | Ingredients] ── [User Avatar] │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                         Auth & Session Context                         │
+│   • currentUser: UserProfile | null                                    │
+│   • signIn(email, password), signUp(name, email, password), signOut()   │
+│   • switchDemoAccount(demoId)                                          │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                  ┌─────────────────┴─────────────────┐
+                  ▼                                   ▼
+┌───────────────────────────────────┐   ┌────────────────────────────────┐
+│        User Account Store         │   │      Active User Data Store    │
+│  • accounts: Record<string, User> │   │  • recipes: Recipe[]           │
+│  • activeSession: string (userId) │   │  • ingredients: Ingredient[]   │
+│  • demoAccounts: DemoUser[]       │   │  • weeklyPlan: DayPlans        │
+└───────────────────────────────────┘   └────────────────────────────────┘
+                  │                                   │
+                  ▼                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                      Browser LocalStorage Engine                       │
+│   • "kt_accounts"          → User directory & credentials               │
+│   • "kt_session"           → Currently active user ID                  │
+│   • "kt_user_data_{id}"    → Isolated recipes, ingredients & plan      │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Schema Updates (`src/types.ts`)
-- Add `fiber?: number` to `Recipe` and `Ingredient` interfaces.
-- Define `MealSlot = 'preBreakfast' | 'breakfast' | 'lunch' | 'snack' | 'dinner'`.
-- Update `DayPlan` to: `Record<MealSlot, string[]>`, allowing multiple recipe IDs per slot.
+### Data Entities & Schema
 
-### State Transitions & Working Handlers
-- `handleAddRecipeToSlot(day, slot)`: Opens the recipe picker; choosing a recipe appends it to `dayPlans[day][slot]`.
-- `handleRemoveItem(day, slot, index)`: Removes the recipe at specific index from the slot.
-- `handleClearSlot(day, slot)`: Empties all items from the slot.
-- Real-time recalculation of day totals and weekly averages on every state mutation.
+```typescript
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string;
+  role: 'chef' | 'nutritionist' | 'home_cook';
+  createdAt: string;
+}
 
----
+export interface UserAccountData {
+  userId: string;
+  recipes: Recipe[];
+  ingredients: Ingredient[];
+  weeklyPlan: Record<string, Record<MealSlot, string[]>>; // completely empty for new users
+  hasPopulatedStarterWeek?: boolean;
+}
+```
 
-## 3. Verification & Polish
-- Ensure all numeric values use `tabular-nums` for crisp visual alignment.
-- Implement responsive layout: clean tabbed selector on mobile/tablet and wide desktop presentation.
-- Verify TypeScript types and lint checks pass cleanly.
+### Component & State Mapping
+
+1. **`src/services/authStore.ts`**:
+   - Manages user creation, password verification, demo account bootstrapping, session cookies/keys, and per-user data loading/saving.
+   - Seeds default accounts if none exist:
+     - `Maya Patel` (`maya@kitchentable.app`): Nutritionist profile with plant-forward preferences.
+     - `Alex Rivera` (`alex@kitchentable.app`): Home Chef profile with family meal preferences.
+2. **`src/components/AuthModal.tsx`**:
+   - Polished modal dialog with 3 accessible tabs: **Sign In**, **Sign Up**, and **Demo Profiles**.
+   - Input validation, friendly error messaging, and password show/hide toggles.
+3. **`src/components/UserMenu.tsx`**:
+   - Top-right avatar trigger displaying the user's initial or photo.
+   - Dropdown showing active user email, quick profile switch, and sign out button.
+4. **`src/screens/MainScreens.tsx` (`PlannerScreen`)**:
+   - Listens to active user's `weeklyPlan`.
+   - Renders empty planner state when all days are empty, featuring:
+     - `"Populate Starter Week"` one-click generator button.
+     - `"Browse Recipes"` link.
+     - Clear week option when populated.
+5. **`src/App.tsx`**:
+   - Wraps the application in active user state.
+   - Synchronizes recipe edits, ingredient changes, and meal plan slots to `authStore.saveUserData()`.

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Calendar, UtensilsCrossed, Apple, Plus, ArrowLeft, Edit2, Trash2, Check, X } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
+import { UserMenu } from './UserMenu';
+import { UserProfile } from '../types';
 
 export interface TopBarProps {
   activeTab?: string;
@@ -14,6 +16,11 @@ export interface TopBarProps {
   onDelete?: () => void;
   onSave?: () => void;
   saveLabel?: string;
+  currentUser?: UserProfile | null;
+  allUsers?: UserProfile[];
+  onSwitchUser?: (userId: string) => void;
+  onOpenAuth?: (tab?: 'signin' | 'signup' | 'demo') => void;
+  onSignOut?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -28,6 +35,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   onDelete,
   onSave,
   saveLabel = 'Save',
+  currentUser,
+  allUsers = [],
+  onSwitchUser = () => {},
+  onOpenAuth = () => {},
+  onSignOut = () => {},
 }) => {
   const isSubView = currentView !== 'main';
 
@@ -213,12 +225,13 @@ export const TopBar: React.FC<TopBarProps> = ({
                   <span className="sm:hidden">Recipe</span>
                 </button>
               )}
-              <div 
-                className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 text-primary font-black flex items-center justify-center text-xs ml-1"
-                title="Kitchen Table Admin"
-              >
-                KT
-              </div>
+              <UserMenu
+                currentUser={currentUser || null}
+                allUsers={allUsers}
+                onSwitchUser={onSwitchUser}
+                onOpenAuth={onOpenAuth}
+                onSignOut={onSignOut}
+              />
             </>
           )}
         </div>
