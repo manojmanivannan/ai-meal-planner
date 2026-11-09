@@ -51,6 +51,21 @@ const DAY_SHORT_MAP: Record<string, string> = {
   Sunday: 'SUN',
 };
 
+const JS_DAY_TO_WEEKDAY: Record<number, typeof DAYS_OF_WEEK[number]> = {
+  0: 'Sunday',
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday',
+};
+
+export const getTodayDayName = (): typeof DAYS_OF_WEEK[number] => {
+  const dayIndex = new Date().getDay();
+  return JS_DAY_TO_WEEKDAY[dayIndex] || 'Monday';
+};
+
 export const PlannerScreen: React.FC<PlannerScreenProps> = ({ 
   onRecipeClick, 
   recipes = INITIAL_RECIPES,
@@ -61,7 +76,8 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
   onClearWeeklyPlan,
   userName,
 }) => {
-  const [selectedDay, setSelectedDay] = React.useState<string>('Thursday');
+  const todayName = React.useMemo(() => getTodayDayName(), []);
+  const [selectedDay, setSelectedDay] = React.useState<string>(() => getTodayDayName());
   const [viewMode, setViewMode] = React.useState<'day' | 'week'>('day');
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
   const [activeSlot, setActiveSlot] = React.useState<{ day: string; slot: MealSlot; slotLabel: string } | null>(null);
@@ -470,7 +486,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
   // Render a single Day Column Card (for 7-Day Board View)
   const renderDayCard = (day: string) => {
     const totals = getDayTotals(day);
-    const isToday = day === 'Thursday';
+    const isToday = day === todayName;
 
     return (
       <div 
@@ -681,7 +697,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
         <div className="flex items-center p-1.5 bg-surface-lowest rounded-2xl border border-surface-container gap-1 overflow-x-auto no-scrollbar shadow-2xs">
           {DAYS_OF_WEEK.map(d => {
             const isSelected = selectedDay === d;
-            const isToday = d === 'Thursday';
+            const isToday = d === todayName;
             const shortCode = DAY_SHORT_MAP[d];
             const dTotals = getDayTotals(d);
 
@@ -748,7 +764,7 @@ export const PlannerScreen: React.FC<PlannerScreenProps> = ({
                 </button>
                 <div className="w-[185px] sm:w-[200px] shrink-0 flex items-center justify-center gap-2 select-none">
                   <h2 className="text-xl font-black text-on-surface tracking-tight">{selectedDay}</h2>
-                  {selectedDay === 'Thursday' && (
+                  {selectedDay === todayName && (
                     <span className="bg-primary-light text-primary text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
                       TODAY
                     </span>
